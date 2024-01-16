@@ -107,19 +107,19 @@ local function creatureSayCallback(npc, creature, type, message)
 		end
 		npcHandler:setTopic(playerId, 0)
 	elseif npcHandler:getTopic(playerId) == 0 and MsgContains(message, "class") then
-		npcHandler:say("Para qual classe voce quer trocar? {sorcerer}, {druid}, {paladin}, {knight}, {espadachim}", npc, creature)
+		npcHandler:say("Para qual classe voce quer trocar? {espadachim}, {barbaro}, {paladino}, {cacador}, {mago}", npc, creature)
 		npcHandler:setTopic(playerId, 4)
 	elseif npcHandler:getTopic(playerId) == 4 then
-		if MsgContains(message, "sorcerer") then
-			player:setVocation(1)
-		elseif MsgContains(message, "druid") then
-			player:setVocation(2)
-		elseif MsgContains(message, "paladin") then
-			player:setVocation(3)
-		elseif MsgContains(message, "knight") then
-			player:setVocation(4)
-		elseif MsgContains(message, "espadachim") then
+		if MsgContains(message, "espadachim") then
 			player:setVocation(9)
+		elseif MsgContains(message, "barbaro") then
+			player:setVocation(10)
+		elseif MsgContains(message, "paladino") then
+			player:setVocation(11)
+		elseif MsgContains(message, "cacador") then
+			player:setVocation(12)
+		elseif MsgContains(message, "mago") then
+			player:setVocation(13)
 		end
 		npcHandler:setTopic(playerId, 0)
 	elseif npcHandler:getTopic(playerId) == 0 and MsgContains(message, "monstro") then
@@ -129,15 +129,14 @@ local function creatureSayCallback(npc, creature, type, message)
 		creatures = message
 		Game.createMonster(creatures, npc:getPosition())
 		npcHandler:setTopic(playerId,0)
-	end
-	if npcHandler:getTopic(playerId) == 0 and MsgContains(message, "reset") then
+	elseif npcHandler:getTopic(playerId) == 0 and MsgContains(message, "reset") then
 		todas = {"club", "sword", "axe", "dist", "shield", "fish", ""}
 		for i=1, 7 do
 			local skillId = getSkillId(todas[i])
-			player:setSkillLevel(skillId, 10) 
+			player:setSkillLevel(skillId, 10, 0) 
 		end
 		
-		player:addManaSpent(-1*player:getManaSpent(), true)
+		player:setMagicLevel(0, 0)
 
 		newLevel = 1
 		currLevel = player:getLevel()
@@ -161,18 +160,18 @@ local function creatureSayCallback(npc, creature, type, message)
 	elseif npcHandler:getTopic(playerId) == 7 then
 		if skill == "ml" then
 			npcHandler:say("entrou ml",npc,creature)
-			player:addManaSpent(player:getVocation():getRequiredManaSpent(player:getBaseMagicLevel() + tonumber(message)) - player:getManaSpent(), true)
+			player:setMagicLevel(tonumber(message), 0)
 			npcHandler:setTopic(playerId, 0)
 		else
 			local skillId = getSkillId(skill)
-			player:setSkillLevel(skillId, tonumber(message))
+			player:setSkillLevel(skillId, tonumber(message), 0)
 			npcHandler:setTopic(playerId, 0)
-		end	
+		end
 	end
 	return true
 end
 
-npcHandler:setMessage(MESSAGE_GREET, "Salve, |PLAYERNAME|. Voce quer {teleport}, {exp}, {item}, {level}, {monstro}, {reset} ou {skill}?")
+npcHandler:setMessage(MESSAGE_GREET, "Salve, |PLAYERNAME|. Voce quer {teleport}, {exp}, {item}, {level}, {class}, {monstro}, {reset} ou {skill}?")
 npcHandler:setMessage(MESSAGE_FAREWELL, "Flw meu cria.")
 npcHandler:setMessage(MESSAGE_WALKAWAY, "Flw meu irmao.")
 npcHandler:addModule(FocusModule:new(), npcConfig.name, true, true, true)

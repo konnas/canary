@@ -1,9 +1,7 @@
 local condition = Condition(CONDITION_ATTRIBUTES)
-condition:setParameter(CONDITION_PARAM_SUBID, 5)
 condition:setParameter(CONDITION_PARAM_TICKS, 10000)
-condition:setParameter(CONDITION_PARAM_SKILL_MELEEPERCENT, 135)
-condition:setParameter(CONDITION_PARAM_BUFF_DAMAGERECEIVED, 115)
-condition:setParameter(CONDITION_PARAM_DISABLE_DEFENSE, true)
+condition:setParameter(CONDITION_PARAM_SKILL_LIFE_LEECH_CHANCE, 100)
+condition:setParameter(CONDITION_PARAM_SKILL_LIFE_LEECH_AMOUNT, 100)
 condition:setParameter(CONDITION_PARAM_BUFF_SPELL, true)
 
 local combat = Combat()
@@ -14,22 +12,19 @@ combat:addCondition(condition)
 local spell = Spell("instant")
 
 function spell.onCastSpell(creature, var)
-	if creature:getCondition(CONDITION_ATTRIBUTES, CONDITIONID_COMBAT, 5) then
-		creature:removeCondition(CONDITION_ATTRIBUTES, CONDITIONID_COMBAT, 5)
-	end
 	return combat:execute(creature, var)
 end
 
-spell:name("Blood Rage")
+spell:name("Vampirismo")
 spell:words("utito tempo")
 spell:group("support", "focus")
-spell:vocation("knight;true", "elite knight;true")
+spell:vocation("espadachim;true")
 spell:castSound(SOUND_EFFECT_TYPE_SPELL_BLOOD_RAGE)
 spell:id(133)
 spell:cooldown(2 * 1000)
 spell:groupCooldown(2 * 1000, 2 * 1000)
-spell:level(60)
-spell:mana(290)
+spell:level(1)
+spell:mana(1)
 spell:isSelfTarget(true)
 spell:isAggressive(false)
 spell:isPremium(true)
