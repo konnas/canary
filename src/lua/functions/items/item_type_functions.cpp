@@ -9,8 +9,8 @@
 
 #include "pch.hpp"
 
-#include "items/item.hpp"
-#include "items/items.hpp"
+#include "items/item.h"
+#include "items/items.h"
 #include "lua/functions/items/item_type_functions.hpp"
 
 int ItemTypeFunctions::luaItemTypeCreate(lua_State* L) {
@@ -76,7 +76,7 @@ int ItemTypeFunctions::luaItemTypeIsMovable(lua_State* L) {
 	// itemType:isMovable()
 	const ItemType* itemType = getUserdata<const ItemType>(L, 1);
 	if (itemType) {
-		pushBoolean(L, itemType->movable);
+		pushBoolean(L, itemType->moveable);
 	} else {
 		lua_pushnil(L);
 	}
@@ -99,17 +99,6 @@ int ItemTypeFunctions::luaItemTypeIsStackable(lua_State* L) {
 	const ItemType* itemType = getUserdata<const ItemType>(L, 1);
 	if (itemType) {
 		pushBoolean(L, itemType->stackable);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int ItemTypeFunctions::luaItemTypeIsStowable(lua_State* L) {
-	// itemType:isStowable()
-	const ItemType* itemType = getUserdata<const ItemType>(L, 1);
-	if (itemType) {
-		pushBoolean(L, itemType->stackable && itemType->wareId > 0);
 	} else {
 		lua_pushnil(L);
 	}
@@ -271,12 +260,10 @@ int ItemTypeFunctions::luaItemTypeGetArticle(lua_State* L) {
 }
 
 int ItemTypeFunctions::luaItemTypeGetDescription(lua_State* L) {
-	// itemType:getDescription([count])
-	auto itemType = getUserdata<ItemType>(L, 1);
+	// itemType:getDescription()
+	const ItemType* itemType = getUserdata<const ItemType>(L, 1);
 	if (itemType) {
-		auto count = getNumber<uint16_t>(L, 2, -1);
-		auto description = Item::getDescription(*itemType, 1, nullptr, count);
-		pushString(L, description);
+		pushString(L, itemType->description);
 	} else {
 		lua_pushnil(L);
 	}
@@ -339,19 +326,6 @@ int ItemTypeFunctions::luaItemTypeGetWeight(lua_State* L) {
 
 	uint64_t weight = static_cast<uint64_t>(itemType->weight) * std::max<int32_t>(1, count);
 	lua_pushnumber(L, weight);
-	return 1;
-}
-
-int ItemTypeFunctions::luaItemTypeGetStackSize(lua_State* L) {
-	// itemType:getStackSize()
-	const ItemType* itemType = getUserdata<const ItemType>(L, 1);
-	if (!itemType) {
-		lua_pushnil(L);
-		return 1;
-	}
-
-	uint64_t stackSize = static_cast<uint64_t>(itemType->stackSize);
-	lua_pushnumber(L, stackSize);
 	return 1;
 }
 
@@ -608,17 +582,6 @@ int ItemTypeFunctions::luaItemTypeHasSubType(lua_State* L) {
 	const ItemType* itemType = getUserdata<const ItemType>(L, 1);
 	if (itemType) {
 		pushBoolean(L, itemType->hasSubType());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int ItemTypeFunctions::luaItemTypeGetVocationString(lua_State* L) {
-	// itemType:getVocationString()
-	const ItemType* itemType = getUserdata<const ItemType>(L, 1);
-	if (itemType) {
-		pushString(L, itemType->vocationString);
 	} else {
 		lua_pushnil(L);
 	}

@@ -9,13 +9,14 @@
 
 #include "pch.hpp"
 
-#include "config/configmanager.hpp"
+#include "config/configmanager.h"
 #include "game/scheduling/events_scheduler.hpp"
-#include "lua/scripts/scripts.hpp"
+#include "lua/scripts/scripts.h"
+#include "utils/pugicast.h"
 
 bool EventsScheduler::loadScheduleEventFromXml() {
 	pugi::xml_document doc;
-	auto folder = g_configManager().getString(CORE_DIRECTORY, __FUNCTION__) + "/XML/events.xml";
+	auto folder = g_configManager().getString(CORE_DIRECTORY) + "/XML/events.xml";
 	if (!doc.load_file(folder.c_str())) {
 		printXMLError(__FUNCTION__, folder, doc.load_file(folder.c_str()));
 		consoleHandlerExit();
@@ -28,8 +29,7 @@ bool EventsScheduler::loadScheduleEventFromXml() {
 
 	// Keep track of loaded scripts to check for duplicates
 	int count = 0;
-	phmap::flat_hash_set<std::string_view> loadedScripts;
-	std::map<std::string, EventRates> eventsOnSameDay;
+	std::set<std::string_view, std::less<>> loadedScripts;
 	for (const auto &eventNode : doc.child("events").children()) {
 		std::string eventScript = eventNode.attribute("script").as_string();
 		std::string eventName = eventNode.attribute("name").as_string();
@@ -49,85 +49,46 @@ bool EventsScheduler::loadScheduleEventFromXml() {
 			continue;
 		}
 
+		++count;
+		if (count >= 2) {
+			SPDLOG_WARN("{} - More than one event scheduled for the same day.", __FUNCTION__);
+		}
+
 		if (!eventScript.empty() && loadedScripts.contains(eventScript)) {
-			g_logger().warn("{} - Script declaration '{}' in duplicate 'data/XML/events.xml'.", __FUNCTION__, eventScript);
+			SPDLOG_WARN("{} - Script declaration '{}' in duplicate 'data/XML/events.xml'.", __FUNCTION__, eventScript);
 			continue;
 		}
 
 		loadedScripts.insert(eventScript);
 		if (!eventScript.empty() && !g_scripts().loadEventSchedulerScripts(eventScript)) {
-			g_logger().warn("{} - Can not load the file '{}' on '/events/scripts/scheduler/'", __FUNCTION__, eventScript);
+			SPDLOG_WARN("{} - Can not load the file '{}' on '/events/scripts/scheduler/'", __FUNCTION__, eventScript);
 			return false;
 		}
 
-		EventRates currentEventRates;
 		for (const auto &ingameNode : eventNode.children()) {
 			if (ingameNode.attribute("exprate")) {
-				uint16_t exprate = static_cast<uint16_t>(ingameNode.attribute("exprate").as_uint());
-				currentEventRates.exprate = exprate;
-				g_eventsScheduler().setExpSchedule(exprate);
+				g_eventsScheduler().setExpSchedule(static_cast<uint16_t>(ingameNode.attribute("exprate").as_uint()));
 			}
 
 			if (ingameNode.attribute("lootrate")) {
-				uint16_t lootrate = static_cast<uint16_t>(ingameNode.attribute("lootrate").as_uint());
-				currentEventRates.lootrate = lootrate;
-				g_eventsScheduler().setLootSchedule(lootrate);
+				g_eventsScheduler().setLootSchedule(ingameNode.attribute("lootrate").as_uint());
 			}
 
 			if (ingameNode.attribute("spawnrate")) {
-				uint16_t spawnrate = static_cast<uint16_t>(ingameNode.attribute("spawnrate").as_uint());
-				currentEventRates.spawnrate = spawnrate;
-				g_eventsScheduler().setSpawnMonsterSchedule(spawnrate);
+				g_eventsScheduler().setSpawnMonsterSchedule(ingameNode.attribute("spawnrate").as_uint());
 			}
 
 			if (ingameNode.attribute("skillrate")) {
-				uint16_t skillrate = static_cast<uint16_t>(ingameNode.attribute("skillrate").as_uint());
-				currentEventRates.skillrate = skillrate;
-				g_eventsScheduler().setSkillSchedule(skillrate);
+				g_eventsScheduler().setSkillSchedule(static_cast<uint16_t>(ingameNode.attribute("skillrate").as_uint()));
 			}
 		}
-
-		for (const auto &[eventName, rates] : eventsOnSameDay) {
-			std::vector<std::string> modifiedRates;
-
-			if (rates.exprate != 100 && currentEventRates.exprate != 100 && rates.exprate == currentEventRates.exprate) {
-				modifiedRates.emplace_back("exprate");
-			}
-			if (rates.lootrate != 100 && currentEventRates.lootrate != 100 && rates.lootrate == currentEventRates.lootrate) {
-				modifiedRates.emplace_back("lootrate");
-			}
-			if (rates.spawnrate != 100 && currentEventRates.spawnrate != 100 && rates.spawnrate == currentEventRates.spawnrate) {
-				modifiedRates.emplace_back("spawnrate");
-			}
-			if (rates.skillrate != 100 && currentEventRates.skillrate != 100 && rates.skillrate == currentEventRates.skillrate) {
-				modifiedRates.emplace_back("skillrate");
-			}
-
-			if (!modifiedRates.empty()) {
-				std::string ratesString = join(modifiedRates, ", ");
-				g_logger().warn("{} - Events '{}' and '{}' have the same rates [{}] on the same day.", __FUNCTION__, eventNode.attribute("name").as_string(), eventName.c_str(), ratesString);
-			}
-		}
-
-		eventsOnSameDay[eventName] = currentEventRates;
-		eventScheduler.emplace_back(EventScheduler(eventName, startDays, endDays));
+		eventScheduler.push_back(EventScheduler(eventName, startDays, endDays));
 	}
 
 	for (const auto &event : eventScheduler) {
 		if (daysMath >= event.startDays && daysMath <= event.endDays) {
-			g_logger().info("Active EventScheduler: {}", event.name);
+			SPDLOG_INFO("Active EventScheduler: {}", event.name);
 		}
 	}
 	return true;
-}
-
-std::string EventsScheduler::join(const std::vector<std::string> &vec, const std::string &delim) {
-	std::stringstream result;
-	for (size_t i = 0; i < vec.size(); ++i) {
-		result << vec[i];
-		if (i != vec.size() - 1) {
-			result << delim;
-		}
-	}
-	return result.str();
 }

@@ -11,13 +11,12 @@
 
 #include "game/functions/game_reload.hpp"
 
-#include "config/configmanager.hpp"
-#include "lua/creature/events.hpp"
-#include "creatures/players/imbuements/imbuements.hpp"
+#include "config/configmanager.h"
+#include "lua/creature/events.h"
+#include "creatures/players/imbuements/imbuements.h"
 #include "lua/scripts/lua_environment.hpp"
-#include "lua/modules/modules.hpp"
-#include "lua/scripts/scripts.hpp"
-#include "game/zones/zone.hpp"
+#include "lua/modules/modules.h"
+#include "lua/scripts/scripts.h"
 
 GameReload::GameReload() = default;
 GameReload::~GameReload() = default;
@@ -50,6 +49,8 @@ bool GameReload::init(Reload_t reloadTypes) const {
 			return reloadRaids();
 		case Reload_t::RELOAD_TYPE_SCRIPTS:
 			return reloadScripts();
+		case Reload_t::RELOAD_TYPE_TALKACTION:
+			return reloadTalkaction();
 		case Reload_t::RELOAD_TYPE_GROUPS:
 			return reloadGroups();
 		default:
@@ -72,7 +73,6 @@ bool GameReload::reloadAll() const {
 	reloadResults.reserve(magic_enum::enum_count<Reload_t>());
 
 	for (auto value : magic_enum::enum_values<Reload_t>()) {
-		g_logger().info("Reloading: {}", magic_enum::enum_name(value));
 		if (value == Reload_t::RELOAD_TYPE_ALL) {
 			continue;
 		}
@@ -96,11 +96,10 @@ bool GameReload::reloadEvents() const {
 }
 
 bool GameReload::reloadCore() const {
-	if (auto coreFolder = g_configManager().getString(CORE_DIRECTORY, __FUNCTION__);
-		g_luaEnvironment().loadFile(coreFolder + "/core.lua", "core.lua") == 0) {
+	if (auto coreFolder = g_configManager().getString(CORE_DIRECTORY);
+		g_luaEnvironment.loadFile(coreFolder + "/core.lua", "core.lua") == 0) {
 		// Reload scripts lib
-		auto datapackFolder = g_configManager().getString(DATA_DIRECTORY, __FUNCTION__);
-		if (!g_scripts().loadScripts(datapackFolder + "/scripts/lib", true, false)) {
+		if (!g_scripts().loadScripts("scripts/lib", true, false)) {
 			return false;
 		}
 
@@ -122,15 +121,12 @@ bool GameReload::reloadModules() const {
 }
 
 bool GameReload::reloadMonsters() const {
-	// Clear registered MonsterType vector
-	g_monsters().clear();
 	// Resets monster spells to prevent the spell from being incorrectly cleared from memory
-	auto datapackFolder = g_configManager().getString(DATA_DIRECTORY, __FUNCTION__);
-	if (!g_scripts().loadScripts(datapackFolder + "/scripts/lib", true, false)) {
+	if (!g_scripts().loadScripts("scripts/lib", true, false)) {
 		return false;
 	}
 
-	if (g_scripts().loadScripts(datapackFolder + "/monster", false, true) && g_scripts().loadScripts(datapackFolder + "/scripts/lib", true, true)) {
+	if (g_scripts().loadScripts("monster", false, true) && g_scripts().loadScripts("scripts/lib", true, true)) {
 		return true;
 	}
 	return false;
@@ -149,19 +145,24 @@ bool GameReload::reloadRaids() const {
 }
 
 bool GameReload::reloadScripts() const {
+	// Resets monster spells to prevent the spell from being incorrectly cleared from memory
+	if (!g_scripts().loadScripts("scripts/lib", true, false)) {
+		return false;
+	}
 	g_scripts().clearAllScripts();
-	Zone::clearZones();
-	// Reset scripts lib to prevent the objects from being incorrectly cleared from memory
-	auto datapackFolder = g_configManager().getString(DATA_DIRECTORY, __FUNCTION__);
-	g_scripts().loadScripts(datapackFolder + "/scripts/lib", true, false);
-	auto coreFolder = g_configManager().getString(CORE_DIRECTORY, __FUNCTION__);
-	g_scripts().loadScripts(datapackFolder + "/scripts", false, true);
-	g_scripts().loadScripts(coreFolder + "/scripts", false, true);
 
-	// It should come last, after everything else has been cleaned up.
-	reloadMonsters();
-	reloadNpcs();
-	return true;
+	if (g_scripts().loadScripts("scripts", false, true)) {
+		return true;
+	}
+	return false;
+}
+
+bool GameReload::reloadTalkaction() const {
+	if (auto coreFolder = g_configManager().getString(CORE_DIRECTORY);
+		g_luaEnvironment.loadFile(coreFolder + "/scripts/talkactions.lua", "talkactions.lua") == 0) {
+		return true;
+	}
+	return false;
 }
 
 bool GameReload::reloadGroups() const {

@@ -7,7 +7,8 @@
  * Website: https://docs.opentibiabr.com/
  */
 
-#pragma once
+#ifndef SRC_CREATURES_CREATURES_DEFINITIONS_HPP_
+#define SRC_CREATURES_CREATURES_DEFINITIONS_HPP_
 
 // Enum
 
@@ -58,58 +59,43 @@ enum ConditionAttr_t {
 	CONDITIONATTR_MANASHIELD,
 	CONDITIONATTR_ADDSOUND,
 	CONDITIONATTR_TICKSOUND,
-	CONDITIONATTR_ABSORBS,
-	CONDITIONATTR_INCREASES,
-	CONDITIONATTR_CHARM_CHANCE_MODIFIER,
 
 	// reserved for serialization
 	CONDITIONATTR_END = 254,
 };
 
-enum ConditionType_t : uint8_t {
-	CONDITION_NONE = 0,
+enum ConditionType_t {
+	CONDITION_NONE,
 
-	CONDITION_POISON = 1,
-	CONDITION_FIRE = 2,
-	CONDITION_ENERGY = 3,
-	CONDITION_BLEEDING = 4,
-	CONDITION_HASTE = 5,
-	CONDITION_PARALYZE = 6,
-	CONDITION_OUTFIT = 7,
-	CONDITION_INVISIBLE = 8,
-	CONDITION_LIGHT = 9,
-	CONDITION_MANASHIELD = 10,
-	CONDITION_INFIGHT = 11,
-	CONDITION_DRUNK = 12,
-	CONDITION_EXHAUST = 13, // unused
-	CONDITION_REGENERATION = 14,
-	CONDITION_SOUL = 15,
-	CONDITION_DROWN = 16,
-	CONDITION_MUTED = 17,
-	CONDITION_CHANNELMUTEDTICKS = 18,
-	CONDITION_YELLTICKS = 19,
-	CONDITION_ATTRIBUTES = 20,
-	CONDITION_FREEZING = 21,
-	CONDITION_DAZZLED = 22,
-	CONDITION_CURSED = 23,
-	CONDITION_EXHAUST_COMBAT = 24, // unused
-	CONDITION_EXHAUST_HEAL = 25, // unused
-	CONDITION_PACIFIED = 26,
-	CONDITION_SPELLCOOLDOWN = 27,
-	CONDITION_SPELLGROUPCOOLDOWN = 28,
-	CONDITION_ROOTED = 29,
-	CONDITION_FEARED = 30,
-	CONDITION_LESSERHEX = 31,
-	CONDITION_INTENSEHEX = 32,
-	CONDITION_GREATERHEX = 33,
-	CONDITION_GOSHNAR1 = 34,
-	CONDITION_GOSHNAR2 = 35,
-	CONDITION_GOSHNAR3 = 36,
-	CONDITION_GOSHNAR4 = 37,
-	CONDITION_GOSHNAR5 = 38,
-
-	// Need the last ever
-	CONDITION_COUNT = 39
+	CONDITION_POISON = 1 << 0,
+	CONDITION_FIRE = 1 << 1,
+	CONDITION_ENERGY = 1 << 2,
+	CONDITION_BLEEDING = 1 << 3,
+	CONDITION_HASTE = 1 << 4,
+	CONDITION_PARALYZE = 1 << 5,
+	CONDITION_OUTFIT = 1 << 6,
+	CONDITION_INVISIBLE = 1 << 7,
+	CONDITION_LIGHT = 1 << 8,
+	CONDITION_MANASHIELD = 1 << 9,
+	CONDITION_INFIGHT = 1 << 10,
+	CONDITION_DRUNK = 1 << 11,
+	CONDITION_EXHAUST = 1 << 12, // unused
+	CONDITION_REGENERATION = 1 << 13,
+	CONDITION_SOUL = 1 << 14,
+	CONDITION_DROWN = 1 << 15,
+	CONDITION_MUTED = 1 << 16,
+	CONDITION_CHANNELMUTEDTICKS = 1 << 17,
+	CONDITION_YELLTICKS = 1 << 18,
+	CONDITION_ATTRIBUTES = 1 << 19,
+	CONDITION_FREEZING = 1 << 20,
+	CONDITION_DAZZLED = 1 << 21,
+	CONDITION_CURSED = 1 << 22,
+	CONDITION_EXHAUST_COMBAT = 1 << 23, // unused
+	CONDITION_EXHAUST_HEAL = 1 << 24, // unused
+	CONDITION_PACIFIED = 1 << 25,
+	CONDITION_SPELLCOOLDOWN = 1 << 26,
+	CONDITION_SPELLGROUPCOOLDOWN = 1 << 27,
+	CONDITION_ROOTED = 1 << 28,
 };
 
 enum ConditionParam_t {
@@ -172,29 +158,7 @@ enum ConditionParam_t {
 	CONDITION_PARAM_BUFF_DAMAGERECEIVED = 57,
 	CONDITION_PARAM_SOUND_TICK = 58,
 	CONDITION_PARAM_SOUND_ADD = 59,
-	CONDITION_PARAM_CASTER_POSITION = 60,
-	CONDITION_PARAM_DRAIN_BODY = 61,
-	CONDITION_PARAM_ABSORB_PHYSICALPERCENT = 62,
-	CONDITION_PARAM_ABSORB_FIREPERCENT = 63,
-	CONDITION_PARAM_ABSORB_ENERGYPERCENT = 64,
-	CONDITION_PARAM_ABSORB_ICEPERCENT = 65,
-	CONDITION_PARAM_ABSORB_EARTHPERCENT = 66,
-	CONDITION_PARAM_ABSORB_DEATHPERCENT = 67,
-	CONDITION_PARAM_ABSORB_HOLYPERCENT = 68,
-	CONDITION_PARAM_ABSORB_LIFEDRAINPERCENT = 69,
-	CONDITION_PARAM_ABSORB_MANADRAINPERCENT = 70,
-	CONDITION_PARAM_ABSORB_DROWNPERCENT = 71,
-	CONDITION_PARAM_INCREASE_PHYSICALPERCENT = 72,
-	CONDITION_PARAM_INCREASE_FIREPERCENT = 73,
-	CONDITION_PARAM_INCREASE_ENERGYPERCENT = 74,
-	CONDITION_PARAM_INCREASE_ICEPERCENT = 75,
-	CONDITION_PARAM_INCREASE_EARTHPERCENT = 76,
-	CONDITION_PARAM_INCREASE_DEATHPERCENT = 77,
-	CONDITION_PARAM_INCREASE_HOLYPERCENT = 78,
-	CONDITION_PARAM_INCREASE_LIFEDRAINPERCENT = 79,
-	CONDITION_PARAM_INCREASE_MANADRAINPERCENT = 80,
-	CONDITION_PARAM_INCREASE_DROWNPERCENT = 81,
-	CONDITION_PARAM_CHARM_CHANCE_MODIFIER = 82,
+	CONDITION_PARAM_DRAIN_BODY = 60,
 };
 
 enum stats_t {
@@ -211,10 +175,9 @@ enum stats_t {
 enum buffs_t {
 	BUFF_DAMAGEDEALT,
 	BUFF_DAMAGERECEIVED,
-	BUFF_HEALINGRECEIVED,
 
 	BUFF_FIRST = BUFF_DAMAGEDEALT,
-	BUFF_LAST = BUFF_HEALINGRECEIVED,
+	BUFF_LAST = BUFF_DAMAGERECEIVED,
 };
 
 enum formulaType_t {
@@ -237,7 +200,6 @@ enum CombatParam_t {
 	COMBAT_PARAM_USECHARGES,
 	COMBAT_PARAM_CASTSOUND,
 	COMBAT_PARAM_IMPACTSOUND,
-	COMBAT_PARAM_CHAIN_EFFECT,
 };
 
 enum CombatOrigin {
@@ -253,8 +215,6 @@ enum CallBackParam_t {
 	CALLBACK_PARAM_SKILLVALUE,
 	CALLBACK_PARAM_TARGETTILE,
 	CALLBACK_PARAM_TARGETCREATURE,
-	CALLBACK_PARAM_CHAINVALUE,
-	CALLBACK_PARAM_CHAINPICKER,
 };
 
 enum charm_t {
@@ -400,17 +360,6 @@ enum PlayerSex_t : uint8_t {
 	PLAYERSEX_LAST = PLAYERSEX_MALE
 };
 
-enum PlayerPronoun_t : uint8_t {
-	PLAYERPRONOUN_UNSET = 0,
-	PLAYERPRONOUN_THEY = 1,
-	PLAYERPRONOUN_SHE = 2,
-	PLAYERPRONOUN_HE = 3,
-	PLAYERPRONOUN_ZE = 4,
-	PLAYERPRONOUN_NAME = 5,
-
-	PLAYERPRONOUN_LAST = PLAYERPRONOUN_NAME
-};
-
 enum skills_t : int8_t {
 	SKILL_NONE = -1,
 	SKILL_FIST = 0,
@@ -542,141 +491,6 @@ enum class ForgeClassifications_t : uint8_t {
 	FORGE_FIENDISH_MONSTER = 2,
 };
 
-enum class GameFeature_t : uint8_t {
-	ProtocolChecksum = 1,
-	AccountNames = 2,
-	ChallengeOnLogin = 3,
-	PenalityOnDeath = 4,
-	NameOnNpcTrade = 5,
-	DoubleFreeCapacity = 6,
-	DoubleExperience = 7,
-	TotalCapacity = 8,
-	SkillsBase = 9,
-	PlayerRegenerationTime = 10,
-	ChannelPlayerList = 11,
-	PlayerMounts = 12,
-	EnvironmentEffect = 13,
-	CreatureEmblems = 14,
-	ItemAnimationPhase = 15,
-	MagicEffectU16 = 16,
-	PlayerMarket = 17,
-	SpritesU32 = 18,
-	TileAddThingWithStackpos = 19,
-	OfflineTrainingTime = 20,
-	PurseSlot = 21,
-	FormatCreatureName = 22,
-	SpellList = 23,
-	ClientPing = 24,
-	ExtendedClientPing = 25,
-	DoubleHealth = 28,
-	DoubleSkills = 29,
-	ChangeMapAwareRange = 30,
-	MapMovePosition = 31,
-	AttackSeq = 32,
-	BlueNpcNameColor = 33,
-	DiagonalAnimatedText = 34,
-	LoginPending = 35,
-	NewSpeedLaw = 36,
-	ForceFirstAutoWalkStep = 37,
-	MinimapRemove = 38,
-	DoubleShopSellAmount = 39,
-	ContainerPagination = 40,
-	ThingMarks = 41,
-	LooktypeU16 = 42,
-	PlayerStamina = 43,
-	PlayerAddons = 44,
-	MessageStatements = 45,
-	MessageLevel = 46,
-	NewFluids = 47,
-	PlayerStateU16 = 48,
-	NewOutfitProtocol = 49,
-	PVPMode = 50,
-	WritableDate = 51,
-	AdditionalVipInfo = 52,
-	BaseSkillU16 = 53,
-	CreatureIcons = 54,
-	HideNpcNames = 55,
-	SpritesAlphaChannel = 56,
-	PremiumExpiration = 57,
-	BrowseField = 58,
-	EnhancedAnimations = 59,
-	OGLInformation = 60,
-	MessageSizeCheck = 61,
-	PreviewState = 62,
-	LoginPacketEncryption = 63,
-	ClientVersion = 64,
-	ContentRevision = 65,
-	ExperienceBonus = 66,
-	Authenticator = 67,
-	UnjustifiedPoints = 68,
-	SessionKey = 69,
-	DeathType = 70,
-	IdleAnimations = 71,
-	KeepUnawareTiles = 72,
-	IngameStore = 73,
-	IngameStoreHighlights = 74,
-	IngameStoreServiceType = 75,
-	AdditionalSkills = 76,
-	DistanceEffectU16 = 77,
-	Prey = 78,
-	DoubleMagicLevel = 79,
-
-	ExtendedOpcode = 80,
-	MinimapLimitedToSingleFloor = 81,
-	SendWorldName = 82,
-
-	DoubleLevel = 83,
-	DoubleSoul = 84,
-	DoublePlayerGoodsMoney = 85,
-	CreatureWalkthrough = 86,
-	DoubleTradeMoney = 87,
-	SequencedPackets = 88,
-	Tibia12Protocol = 89,
-
-	// 90-99 otclientv8 features
-	NewWalking = 90,
-	SlowerManualWalking = 91,
-
-	ItemTooltip = 93,
-
-	Bot = 95,
-	BiggerMapCache = 96,
-	ForceLight = 97,
-	NoDebug = 98,
-	BotProtection = 99,
-
-	// Custom features for customer
-	FasterAnimations = 101,
-	CenteredOutfits = 102,
-	SendIdentifiers = 103,
-	WingsAndAura = 104,
-	PlayerStateU32 = 105,
-	OutfitShaders = 106,
-
-	// advanced features
-	PacketSizeU32 = 110,
-	PacketCompression = 111,
-	OldInformationBar = 112,
-	HealthInfoBackground = 113,
-	WingOffset = 114,
-	AuraFrontAndBack = 115,
-
-	MapDrawGroundFirst = 116,
-	MapIgnoreCorpseCorrection = 117,
-	DontCacheFiles = 118,
-	BigAurasCenter = 119,
-	NewUpdateWalk = 120,
-	NewCreatureStacking = 121,
-	CreaturesMana = 122,
-	QuickLootFlags = 123,
-	DontMergeAnimatedText = 124,
-	MissionId = 125,
-	ItemCustomAttributes = 126,
-	AnimatedTextCustomFont = 127,
-
-	LastGameFeature = 130
-};
-
 enum OperatingSystem_t : uint8_t {
 	CLIENTOS_NONE = 0,
 
@@ -690,15 +504,6 @@ enum OperatingSystem_t : uint8_t {
 	CLIENTOS_OTCLIENT_LINUX = 10,
 	CLIENTOS_OTCLIENT_WINDOWS = 11,
 	CLIENTOS_OTCLIENT_MAC = 12,
-	// by default OTCv8 uses CLIENTOS_WINDOWS for backward compatibility
-	// for correct value enable g_game.enableFeature(GameExtendedOpcode)
-	// in modules/game_features/features.lua
-	CLIENTOS_OTCLIENTV8_LINUX = 20,
-	CLIENTOS_OTCLIENTV8_WINDOWS = 21,
-	CLIENTOS_OTCLIENTV8_MAC = 22,
-	CLIENTOS_OTCLIENTV8_ANDROID = 23,
-	CLIENTOS_OTCLIENTV8_IOS = 24,
-	CLIENTOS_OTCLIENTV8_WEB = 25,
 };
 
 enum SpellGroup_t : uint8_t {
@@ -737,13 +542,12 @@ enum Vocation_t : uint16_t {
 	VOCATION_ELDER_DRUID = 6,
 	VOCATION_ROYAL_PALADIN = 7,
 	VOCATION_ELITE_KNIGHT = 8,
-	VOCATION_LAST = VOCATION_ELITE_KNIGHT,
-
-	// Cip tibia client ids
-	VOCATION_KNIGHT_CIP = 1,
-	VOCATION_PALADIN_CIP = 2,
-	VOCATION_SORCERER_CIP = 3,
-	VOCATION_DRUID_CIP = 4
+	VOCATION_ESPADACHIM = 9,
+	VOCATION_BARBARO = 10,
+	VOCATION_PALADINO = 11,
+	VOCATION_CACADOR = 12,
+	VOCATION_MAGO = 13,
+	VOCATION_LAST = VOCATION_MAGO
 };
 
 enum FightMode_t : uint8_t {
@@ -767,26 +571,23 @@ enum TradeState_t : uint8_t {
 	TRADE_TRANSFER,
 };
 
-enum CombatType_t : uint8_t {
-	COMBAT_PHYSICALDAMAGE = 0,
-	COMBAT_ENERGYDAMAGE = 1,
-	COMBAT_EARTHDAMAGE = 2,
-	COMBAT_FIREDAMAGE = 3,
-	COMBAT_UNDEFINEDDAMAGE = 4,
-	COMBAT_LIFEDRAIN = 5,
-	COMBAT_MANADRAIN = 6,
-	COMBAT_HEALING = 7,
-	COMBAT_DROWNDAMAGE = 8,
-	COMBAT_ICEDAMAGE = 9,
-	COMBAT_HOLYDAMAGE = 10,
-	COMBAT_DEATHDAMAGE = 11,
-	COMBAT_AGONYDAMAGE = 12,
-	COMBAT_NEUTRALDAMAGE = 13,
+enum CombatType_t : uint16_t {
+	COMBAT_NONE = 0,
 
-	COMBAT_COUNT = 14,
+	COMBAT_PHYSICALDAMAGE = 1 << 0,
+	COMBAT_ENERGYDAMAGE = 1 << 1,
+	COMBAT_EARTHDAMAGE = 1 << 2,
+	COMBAT_FIREDAMAGE = 1 << 3,
+	COMBAT_UNDEFINEDDAMAGE = 1 << 4,
+	COMBAT_LIFEDRAIN = 1 << 5,
+	COMBAT_MANADRAIN = 1 << 6,
+	COMBAT_HEALING = 1 << 7,
+	COMBAT_DROWNDAMAGE = 1 << 8,
+	COMBAT_ICEDAMAGE = 1 << 9,
+	COMBAT_HOLYDAMAGE = 1 << 10,
+	COMBAT_DEATHDAMAGE = 1 << 11,
 
-	// Server read only
-	COMBAT_NONE = 255
+	COMBAT_COUNT = 12
 };
 
 enum PlayerAsyncOngoingTaskFlags : uint64_t {
@@ -1322,209 +1123,240 @@ enum class SourceEffect_t : uint8_t {
 	CREATURES = 3
 };
 
-enum class CreatureIconCategory_t {
-	Quests,
-	Modifications,
+enum WheelOfDestinyStage_t : uint8_t {
+	WHEEL_OF_DESTINY_STAGE_GIFT_OF_LIFE = 0,
+	WHEEL_OF_DESTINY_STAGE_COMBAT_MASTERY = 1,
+	WHEEL_OF_DESTINY_STAGE_BLESSING_OF_THE_GROVE = 2,
+	WHEEL_OF_DESTINY_STAGE_DRAIN_BODY = 3,
+	WHEEL_OF_DESTINY_STAGE_BEAM_MASTERY = 4,
+	WHEEL_OF_DESTINY_STAGE_DIVINE_EMPOWERMENT = 5,
+	WHEEL_OF_DESTINY_STAGE_TWIN_BURST = 6,
+	WHEEL_OF_DESTINY_STAGE_EXECUTIONERS_THROW = 7,
+	WHEEL_OF_DESTINY_STAGE_AVATAR_OF_LIGHT = 8,
+	WHEEL_OF_DESTINY_STAGE_AVATAR_OF_NATURE = 9,
+	WHEEL_OF_DESTINY_STAGE_AVATAR_OF_STEEL = 10,
+	WHEEL_OF_DESTINY_STAGE_AVATAR_OF_STORM = 11,
+
+	WHEEL_OF_DESTINY_STAGE_COUNT = 12
 };
 
-enum class CreatureIconModifications_t {
-	None,
-	HigherDamageReceived,
-	LowerDamageDealt,
-	TurnedMelee,
-	Influenced,
-	Fiendish,
-	ReducedHealth,
+enum WheelOfDestinyOnThink_t : uint8_t {
+	WHEEL_OF_DESTINY_ONTHINK_BATTLE_INSTINCT = 0,
+	WHEEL_OF_DESTINY_ONTHINK_POSITIONAL_TATICS = 1,
+	WHEEL_OF_DESTINY_ONTHINK_BALLISTIC_MASTERY = 2,
+	WHEEL_OF_DESTINY_ONTHINK_COMBAT_MASTERY = 3,
+	WHEEL_OF_DESTINY_ONTHINK_FOCUS_MASTERY = 4,
+	WHEEL_OF_DESTINY_ONTHINK_GIFT_OF_LIFE = 5,
+	WHEEL_OF_DESTINY_ONTHINK_DIVINE_EMPOWERMENT = 6,
+	WHEEL_OF_DESTINY_ONTHINK_AVATAR = 7,
+
+	WHEEL_OF_DESTINY_ONTHINK_COUNT = 8
 };
 
-enum class CreatureIconQuests_t {
-	None,
-	WhiteCross,
-	RedCross,
-	RedBall,
-	GreenBall,
-	RedGreenBall,
-	GreenShield,
-	YellowShield,
-	BlueShield,
-	PurpleShield,
-	RedShield,
-	Dove,
-	Energy,
-	Earth,
-	Water,
-	Fire,
-	Ice,
-	ArrowUp,
-	ArrowDown,
-	ExclamationMark,
-	QuestionMark,
-	CancelMark,
-	Hazard,
-	BrownSkull,
-	BloodDrop,
+enum WheelOfDestinyStat_t : uint8_t {
+	WHEEL_OF_DESTINY_STAT_HEALTH = 0,
+	WHEEL_OF_DESTINY_STAT_MANA = 1,
+	WHEEL_OF_DESTINY_STAT_CAPACITY = 2,
+	WHEEL_OF_DESTINY_STAT_MITIGATION = 3,
+	WHEEL_OF_DESTINY_STAT_MELEE = 4,
+	WHEEL_OF_DESTINY_STAT_DISTANCE = 5,
+	WHEEL_OF_DESTINY_STAT_MAGIC = 6,
+	WHEEL_OF_DESTINY_STAT_LIFE_LEECH = 7,
+	WHEEL_OF_DESTINY_STAT_MANA_LEECH = 8,
+	WHEEL_OF_DESTINY_STAT_HEALING = 9,
+	WHEEL_OF_DESTINY_STAT_DAMAGE = 10,
+	WHEEL_OF_DESTINY_STAT_LIFE_LEECH_CHANCE = 11,
+	WHEEL_OF_DESTINY_STAT_MANA_LEECH_CHANCE = 12,
+
+	WHEEL_OF_DESTINY_STAT_COUNT = 13
 };
 
-struct CreatureIcon {
-	CreatureIcon() = default;
+enum WheelOfDestinyMajor_t : uint8_t {
+	WHEEL_OF_DESTINY_MAJOR_MELEE = 0,
+	WHEEL_OF_DESTINY_MAJOR_DISTANCE = 1,
+	WHEEL_OF_DESTINY_MAJOR_SHIELD = 2,
+	WHEEL_OF_DESTINY_MAJOR_MAGIC = 3,
+	WHEEL_OF_DESTINY_MAJOR_HOLY_RESISTANCE = 4,
+	WHEEL_OF_DESTINY_MAJOR_CRITICAL_DMG = 5,
+	WHEEL_OF_DESTINY_MAJOR_PHYSICAL_DMG = 6,
+	WHEEL_OF_DESTINY_MAJOR_HOLY_DMG = 7,
+	WHEEL_OF_DESTINY_MAJOR_CRITICAL_DMG_2 = 8,
+	WHEEL_OF_DESTINY_MAJOR_DEFENSE = 9,
+	WHEEL_OF_DESTINY_MAJOR_DAMAGE = 10,
 
-	explicit constexpr CreatureIcon(CreatureIconModifications_t modification, uint16_t count = 0) :
-		category(CreatureIconCategory_t::Modifications), modification(modification), count(count) { }
+	WHEEL_OF_DESTINY_MAJOR_COUNT = 11
+};
 
-	explicit constexpr CreatureIcon(CreatureIconQuests_t quest, uint16_t count = 0) :
-		category(CreatureIconCategory_t::Quests), quest(quest), count(count) { }
+enum WheelOfDestinyInstant_t : uint8_t {
+	WHEEL_OF_DESTINY_INSTANT_BATTLE_INSTINCT = 0,
+	WHEEL_OF_DESTINY_INSTANT_BATTLE_HEALING = 1,
+	WHEEL_OF_DESTINY_INSTANT_POSITIONAL_TATICS = 2,
+	WHEEL_OF_DESTINY_INSTANT_BALLISTIC_MASTERY = 3,
+	WHEEL_OF_DESTINY_INSTANT_HEALING_LINK = 4,
+	WHEEL_OF_DESTINY_INSTANT_RUNIC_MASTERY = 5,
+	WHEEL_OF_DESTINY_INSTANT_FOCUS_MASTERY = 6,
 
-	CreatureIconCategory_t category;
-	CreatureIconModifications_t modification = CreatureIconModifications_t::None;
-	CreatureIconQuests_t quest = CreatureIconQuests_t::None;
-	uint16_t count = 0;
+	WHEEL_OF_DESTINY_INSTANT_COUNT = 7
+};
 
-	bool operator==(const CreatureIcon &other) const = default;
+enum WheelOfDestinyAvatarSkill_t : uint8_t {
+	WHEEL_OF_DESTINY_AVATAR_SKILL_NONE = 0,
+	WHEEL_OF_DESTINY_AVATAR_SKILL_DAMAGE_REDUCTION = 1,
+	WHEEL_OF_DESTINY_AVATAR_SKILL_CRITICAL_CHANCE = 2,
+	WHEEL_OF_DESTINY_AVATAR_SKILL_CRITICAL_DAMAGE = 3
+};
 
-	bool isNone() const {
-		return modification == CreatureIconModifications_t::None && quest == CreatureIconQuests_t::None;
-	}
+enum WheelOfDestinySpellGrade_t : uint8_t {
+	WHEEL_OF_DESTINY_SPELL_GRADE_NONE = 0,
+	WHEEL_OF_DESTINY_SPELL_GRADE_REGULAR = 1,
+	WHEEL_OF_DESTINY_SPELL_GRADE_UPGRADED = 2,
+	WHEEL_OF_DESTINY_SPELL_GRADE_MAX = 3 // This one is used only on LUA
+};
 
-	bool isSet() const {
-		return !isNone();
-	}
+enum WheelOfDestinySpellBoost_t : uint8_t {
+	WHEEL_OF_DESTINY_SPELL_BOOST_MANA = 0,
+	WHEEL_OF_DESTINY_SPELL_BOOST_COOLDOWN = 1,
+	WHEEL_OF_DESTINY_SPELL_BOOST_GROUP_COOLDOWN = 2,
+	WHEEL_OF_DESTINY_SPELL_BOOST_SECONDARY_GROUP_COOLDOWN = 3,
+	WHEEL_OF_DESTINY_SPELL_BOOST_MANA_LEECH = 4,
+	WHEEL_OF_DESTINY_SPELL_BOOST_MANA_LEECH_CHANCE = 5,
+	WHEEL_OF_DESTINY_SPELL_BOOST_LIFE_LEECH = 6,
+	WHEEL_OF_DESTINY_SPELL_BOOST_LIFE_LEECH_CHANCE = 7,
+	WHEEL_OF_DESTINY_SPELL_BOOST_DAMAGE = 8,
+	WHEEL_OF_DESTINY_SPELL_BOOST_DAMAGE_REDUCTION = 9,
+	WHEEL_OF_DESTINY_SPELL_BOOST_HEAL = 10,
+	WHEEL_OF_DESTINY_SPELL_BOOST_CRITICAL_DAMAGE = 11,
+	WHEEL_OF_DESTINY_SPELL_BOOST_CRITICAL_CHANCE = 12,
 
-	uint8_t serialize() const {
-		if (category == CreatureIconCategory_t::Modifications) {
-			return static_cast<uint8_t>(modification);
-		} else if (category == CreatureIconCategory_t::Quests) {
-			return static_cast<uint8_t>(quest);
-		}
-		return 0;
-	}
+	WHEEL_OF_DESTINY_SPELL_BOOST_COUNT = 13
 };
 
 // Structs
 struct Position;
 
 struct VIPEntry {
-	VIPEntry(uint32_t initGuid, std::string initName, std::string initDescription, uint32_t initIcon, bool initNotify) :
-		guid(initGuid),
-		name(std::move(initName)),
-		description(std::move(initDescription)),
-		icon(initIcon),
-		notify(initNotify) { }
+		VIPEntry(uint32_t initGuid, std::string initName, std::string initDescription, uint32_t initIcon, bool initNotify) :
+			guid(initGuid),
+			name(std::move(initName)),
+			description(std::move(initDescription)),
+			icon(initIcon),
+			notify(initNotify) { }
 
-	uint32_t guid;
-	std::string name;
-	std::string description;
-	uint32_t icon;
-	bool notify;
+		uint32_t guid;
+		std::string name;
+		std::string description;
+		uint32_t icon;
+		bool notify;
 };
 
 struct OutfitEntry {
-	constexpr OutfitEntry(uint16_t initLookType, uint8_t initAddons) :
-		lookType(initLookType), addons(initAddons) { }
+		constexpr OutfitEntry(uint16_t initLookType, uint8_t initAddons) :
+			lookType(initLookType), addons(initAddons) { }
 
-	uint16_t lookType;
-	uint8_t addons;
+		uint16_t lookType;
+		uint8_t addons;
 };
 
 struct FamiliarEntry {
-	constexpr explicit FamiliarEntry(uint16_t initLookType) :
-		lookType(initLookType) { }
-	uint16_t lookType;
+		constexpr explicit FamiliarEntry(uint16_t initLookType) :
+			lookType(initLookType) { }
+		uint16_t lookType;
 };
 
 struct Skill {
-	uint64_t tries = 0;
-	uint16_t level = 10;
-	double_t percent = 0;
+		uint64_t tries = 0;
+		uint16_t level = 10;
+		double_t percent = 0;
 };
 
 struct Kill {
-	uint32_t target;
-	time_t time;
-	bool unavenged;
+		uint32_t target;
+		time_t time;
+		bool unavenged;
 
-	Kill(uint32_t _target, time_t _time, bool _unavenged) :
-		target(_target), time(_time), unavenged(_unavenged) { }
+		Kill(uint32_t _target, time_t _time, bool _unavenged) :
+			target(_target), time(_time), unavenged(_unavenged) { }
 };
 
 struct IntervalInfo {
-	int32_t timeLeft;
-	int32_t value;
-	int32_t interval;
+		int32_t timeLeft;
+		int32_t value;
+		int32_t interval;
 };
 
 struct FindPathParams {
-	bool fullPathSearch = true;
-	bool clearSight = true;
-	bool allowDiagonal = true;
-	bool keepDistance = false;
-	int32_t maxSearchDist = 0;
-	int32_t minTargetDist = -1;
-	int32_t maxTargetDist = -1;
+		bool fullPathSearch = true;
+		bool clearSight = true;
+		bool allowDiagonal = true;
+		bool keepDistance = false;
+		int32_t maxSearchDist = 0;
+		int32_t minTargetDist = -1;
+		int32_t maxTargetDist = -1;
 };
 
 struct RecentDeathEntry {
-	RecentDeathEntry(std::string cause, uint32_t timestamp) :
-		cause(std::move(cause)),
-		timestamp(timestamp) { }
+		RecentDeathEntry(std::string cause, uint32_t timestamp) :
+			cause(std::move(cause)),
+			timestamp(timestamp) { }
 
-	std::string cause;
-	uint32_t timestamp;
+		std::string cause;
+		uint32_t timestamp;
 };
 
 struct RecentPvPKillEntry {
-	RecentPvPKillEntry(std::string description, uint32_t timestamp, uint8_t status) :
-		description(std::move(description)),
-		timestamp(timestamp),
-		status(status) { }
+		RecentPvPKillEntry(std::string description, uint32_t timestamp, uint8_t status) :
+			description(std::move(description)),
+			timestamp(timestamp),
+			status(status) { }
 
-	std::string description;
-	uint32_t timestamp;
-	uint8_t status;
+		std::string description;
+		uint32_t timestamp;
+		uint8_t status;
 };
 
 struct MarketOffer {
-	uint64_t price;
-	uint32_t timestamp;
-	uint16_t amount;
-	uint16_t counter;
-	uint16_t itemId;
-	uint8_t tier;
-	std::string playerName;
+		uint64_t price;
+		uint32_t timestamp;
+		uint16_t amount;
+		uint16_t counter;
+		uint16_t itemId;
+		uint8_t tier;
+		std::string playerName;
 };
 
 struct MarketOfferEx {
-	MarketOfferEx() = default;
-	MarketOfferEx(MarketOfferEx &&other) :
-		id(other.id),
-		playerId(other.playerId),
-		timestamp(other.timestamp),
-		price(other.price),
-		amount(other.amount),
-		counter(other.counter),
-		itemId(other.itemId),
-		type(other.type),
-		tier(other.tier),
-		playerName(std::move(other.playerName)) { }
+		MarketOfferEx() = default;
+		MarketOfferEx(MarketOfferEx &&other) :
+			id(other.id),
+			playerId(other.playerId),
+			timestamp(other.timestamp),
+			price(other.price),
+			amount(other.amount),
+			counter(other.counter),
+			itemId(other.itemId),
+			type(other.type),
+			tier(other.tier),
+			playerName(std::move(other.playerName)) { }
 
-	uint32_t id;
-	uint32_t playerId;
-	uint32_t timestamp;
-	uint64_t price;
-	uint16_t amount;
-	uint16_t counter;
-	uint16_t itemId;
-	MarketAction_t type;
-	uint8_t tier;
-	std::string playerName;
+		uint32_t id;
+		uint32_t playerId;
+		uint32_t timestamp;
+		uint64_t price;
+		uint16_t amount;
+		uint16_t counter;
+		uint16_t itemId;
+		MarketAction_t type;
+		uint8_t tier;
+		std::string playerName;
 };
 
 struct HistoryMarketOffer {
-	uint32_t timestamp;
-	uint64_t price;
-	uint16_t itemId;
-	uint16_t amount;
-	uint8_t tier;
-	MarketOfferState_t state;
+		uint32_t timestamp;
+		uint64_t price;
+		uint16_t itemId;
+		uint16_t amount;
+		uint8_t tier;
+		MarketOfferState_t state;
 };
 
 using MarketOfferList = std::list<MarketOffer>;
@@ -1542,181 +1374,204 @@ using ItemsTierCountList = std::map<uint16_t, std::map<uint8_t, uint32_t>>;
 */
 
 struct Familiar {
-	Familiar(std::string initName, uint16_t initLookType, bool initPremium, bool initUnlocked, std::string initType) :
-		name(initName), lookType(initLookType),
-		premium(initPremium), unlocked(initUnlocked),
-		type(initType) { }
+		Familiar(std::string initName, uint16_t initLookType, bool initPremium, bool initUnlocked, std::string initType) :
+			name(initName), lookType(initLookType),
+			premium(initPremium), unlocked(initUnlocked),
+			type(initType) { }
 
-	std::string name;
-	uint16_t lookType;
-	bool premium;
-	bool unlocked;
-	std::string type;
+		std::string name;
+		uint16_t lookType;
+		bool premium;
+		bool unlocked;
+		std::string type;
 };
 
 struct ProtocolFamiliars {
-	ProtocolFamiliars(const std::string &initName, uint16_t initLookType) :
-		name(initName), lookType(initLookType) { }
+		ProtocolFamiliars(const std::string &initName, uint16_t initLookType) :
+			name(initName), lookType(initLookType) { }
 
-	const std::string &name;
-	uint16_t lookType;
+		const std::string &name;
+		uint16_t lookType;
 };
 
 struct LightInfo {
-	uint8_t level = 0;
-	uint8_t color = 215;
-	constexpr LightInfo() = default;
-	constexpr LightInfo(uint8_t newLevel, uint8_t newColor) :
-		level(newLevel), color(newColor) { }
+		uint8_t level = 0;
+		uint8_t color = 215;
+		constexpr LightInfo() = default;
+		constexpr LightInfo(uint8_t newLevel, uint8_t newColor) :
+			level(newLevel), color(newColor) { }
 };
 
 struct CombatDamage {
-	struct {
-		CombatType_t type = COMBAT_NONE;
-		int32_t value = 0;
-	} primary, secondary;
+		struct {
+				CombatType_t type;
+				int32_t value;
+		} primary, secondary;
 
-	CombatOrigin origin = ORIGIN_NONE;
-	bool critical = false;
-	int affected = 1;
-	bool extension = false;
-	std::string exString;
-	bool fatal = false;
+		CombatOrigin origin;
+		bool critical;
+		int affected;
+		bool extension;
+		std::string exString;
+		bool fatal;
 
-	int32_t criticalDamage = 0;
-	int32_t criticalChance = 0;
-	int32_t damageMultiplier = 0;
-	int32_t damageReductionMultiplier = 0;
-	int32_t healingMultiplier = 0;
-	int32_t manaLeech = 0;
-	int32_t manaLeechChance = 0;
-	int32_t lifeLeech = 0;
-	int32_t lifeLeechChance = 0;
-	int32_t healingLink = 0;
+		int32_t criticalDamage;
+		int32_t criticalChance;
+		int32_t damageMultiplier;
+		int32_t damageReductionMultiplier;
+		int32_t healingMultiplier;
+		int32_t manaLeech;
+		int32_t manaLeechChance;
+		int32_t lifeLeech;
+		int32_t lifeLeechChance;
+		int32_t healingLink;
 
-	std::string instantSpellName;
-	std::string runeSpellName;
+		std::string instantSpellName;
+		std::string runeSpellName;
 
-	CombatDamage() = default;
+		CombatDamage() {
+			origin = ORIGIN_NONE;
+			primary.type = secondary.type = COMBAT_NONE;
+			primary.value = secondary.value = 0;
+			critical = false;
+			affected = 1;
+			extension = false;
+			exString = "";
+			fatal = false;
+			criticalDamage = 0;
+			criticalChance = 0;
+			damageMultiplier = 0;
+			damageReductionMultiplier = 0;
+			healingMultiplier = 0;
+			manaLeech = 0;
+			manaLeechChance = 0;
+			lifeLeech = 0;
+			lifeLeechChance = 0;
+			healingLink = 0;
+			instantSpellName = "";
+			runeSpellName = "";
+		}
 };
 
 struct RespawnType {
-	RespawnPeriod_t period;
-	bool underground;
+		RespawnPeriod_t period;
+		bool underground;
 };
 
 struct LootBlock;
 
 struct LootBlock {
-	uint16_t id;
-	uint32_t countmax;
-	uint32_t countmin;
-	uint32_t chance;
+		uint16_t id;
+		uint32_t countmax;
+		uint32_t countmin;
+		uint32_t chance;
 
-	// optional
-	int32_t subType;
-	int32_t actionId;
-	std::string text;
-	std::string name;
-	std::string article;
-	int32_t attack;
-	int32_t defense;
-	int32_t extraDefense;
-	int32_t armor;
-	int32_t shootRange;
-	int32_t hitChance;
-	bool unique;
+		// optional
+		int32_t subType;
+		int32_t actionId;
+		std::string text;
+		std::string name;
+		std::string article;
+		int32_t attack;
+		int32_t defense;
+		int32_t extraDefense;
+		int32_t armor;
+		int32_t shootRange;
+		int32_t hitChance;
+		bool unique;
 
-	std::vector<LootBlock> childLoot;
-	LootBlock() {
-		id = 0;
-		countmax = 1;
-		countmin = 1;
-		chance = 0;
+		std::vector<LootBlock> childLoot;
+		LootBlock() {
+			id = 0;
+			countmax = 1;
+			countmin = 1;
+			chance = 0;
 
-		subType = -1;
-		actionId = -1;
-		attack = -1;
-		defense = -1;
-		extraDefense = -1;
-		armor = -1;
-		shootRange = -1;
-		hitChance = -1;
-		unique = false;
-	}
+			subType = -1;
+			actionId = -1;
+			attack = -1;
+			defense = -1;
+			extraDefense = -1;
+			armor = -1;
+			shootRange = -1;
+			hitChance = -1;
+			unique = false;
+		}
 };
 
 struct ShopBlock {
-	uint16_t itemId;
-	std::string itemName;
-	int32_t itemSubType;
-	uint32_t itemBuyPrice;
-	uint32_t itemSellPrice;
-	int32_t itemStorageKey;
-	int32_t itemStorageValue;
+		uint16_t itemId;
+		std::string itemName;
+		int32_t itemSubType;
+		uint32_t itemBuyPrice;
+		uint32_t itemSellPrice;
+		int32_t itemStorageKey;
+		int32_t itemStorageValue;
 
-	std::vector<ShopBlock> childShop;
-	ShopBlock() {
-		itemId = 0;
-		itemName = "";
-		itemSubType = 0;
-		itemBuyPrice = 0;
-		itemSellPrice = 0;
-		itemStorageKey = 0;
-		itemStorageValue = 0;
-	}
+		std::vector<ShopBlock> childShop;
+		ShopBlock() {
+			itemId = 0;
+			itemName = "";
+			itemSubType = 0;
+			itemBuyPrice = 0;
+			itemSellPrice = 0;
+			itemStorageKey = 0;
+			itemStorageValue = 0;
+		}
 
-	explicit ShopBlock(uint16_t newItemId, int32_t newSubType = 0, uint32_t newBuyPrice = 0, uint32_t newSellPrice = 0, int32_t newStorageKey = 0, int32_t newStorageValue = 0, std::string newName = "") :
-		itemId(newItemId), itemSubType(newSubType), itemBuyPrice(newBuyPrice), itemSellPrice(newSellPrice), itemStorageKey(newStorageKey), itemStorageValue(newStorageValue), itemName(std::move(newName)) { }
+		explicit ShopBlock(uint16_t newItemId, int32_t newSubType = 0, uint32_t newBuyPrice = 0, uint32_t newSellPrice = 0, int32_t newStorageKey = 0, int32_t newStorageValue = 0, std::string newName = "") :
+			itemId(newItemId), itemSubType(newSubType), itemBuyPrice(newBuyPrice), itemSellPrice(newSellPrice), itemStorageKey(newStorageKey), itemStorageValue(newStorageValue), itemName(std::move(newName)) { }
 
-	bool operator==(const ShopBlock &other) const {
-		return itemId == other.itemId && itemName == other.itemName && itemSubType == other.itemSubType && itemBuyPrice == other.itemBuyPrice && itemSellPrice == other.itemSellPrice && itemStorageKey == other.itemStorageKey && itemStorageValue == other.itemStorageValue && childShop == other.childShop;
-	}
+		bool operator==(const ShopBlock &other) const {
+			return itemId == other.itemId && itemName == other.itemName && itemSubType == other.itemSubType && itemBuyPrice == other.itemBuyPrice && itemSellPrice == other.itemSellPrice && itemStorageKey == other.itemStorageKey && itemStorageValue == other.itemStorageValue && childShop == other.childShop;
+		}
 };
 
 struct summonBlock_t {
-	std::string name;
-	uint32_t chance;
-	uint32_t speed;
-	uint32_t count;
-	bool force = false;
+		std::string name;
+		uint32_t chance;
+		uint32_t speed;
+		uint32_t count;
+		bool force = false;
 };
 
 struct Outfit_t {
-	uint16_t lookType = 0;
-	uint16_t lookTypeEx = 0;
-	uint16_t lookMount = 0;
-	uint8_t lookHead = 0;
-	uint8_t lookBody = 0;
-	uint8_t lookLegs = 0;
-	uint8_t lookFeet = 0;
-	uint8_t lookAddons = 0;
-	uint8_t lookMountHead = 0;
-	uint8_t lookMountBody = 0;
-	uint8_t lookMountLegs = 0;
-	uint8_t lookMountFeet = 0;
-	uint16_t lookFamiliarsType = 0;
+		uint16_t lookType = 0;
+		uint16_t lookTypeEx = 0;
+		uint16_t lookMount = 0;
+		uint8_t lookHead = 0;
+		uint8_t lookBody = 0;
+		uint8_t lookLegs = 0;
+		uint8_t lookFeet = 0;
+		uint8_t lookAddons = 0;
+		uint8_t lookMountHead = 0;
+		uint8_t lookMountBody = 0;
+		uint8_t lookMountLegs = 0;
+		uint8_t lookMountFeet = 0;
+		uint16_t lookFamiliarsType = 0;
 };
 
 struct voiceBlock_t {
-	std::string text;
-	bool yellText;
+		std::string text;
+		bool yellText;
 };
 
 struct PartyAnalyzer {
-	PartyAnalyzer(uint32_t playerId, std::string playerName) :
-		id(playerId),
-		name(std::move(playerName)) { }
+		PartyAnalyzer(uint32_t playerId, std::string playerName) :
+			id(playerId),
+			name(std::move(playerName)) { }
 
-	uint32_t id;
+		uint32_t id;
 
-	std::string name;
+		std::string name;
 
-	uint64_t damage = 0;
-	uint64_t healing = 0;
-	uint64_t lootPrice = 0;
-	uint64_t supplyPrice = 0;
+		uint64_t damage = 0;
+		uint64_t healing = 0;
+		uint64_t lootPrice = 0;
+		uint64_t supplyPrice = 0;
 
-	std::map<uint16_t, uint64_t> lootMap; // [itemID] = amount
-	std::map<uint16_t, uint64_t> supplyMap; // [itemID] = amount
+		std::map<uint16_t, uint64_t> lootMap; // [itemID] = amount
+		std::map<uint16_t, uint64_t> supplyMap; // [itemID] = amount
 };
+
+#endif // SRC_CREATURES_CREATURES_DEFINITIONS_HPP_

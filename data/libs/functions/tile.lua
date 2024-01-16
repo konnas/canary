@@ -37,46 +37,22 @@ function Tile.relocateTo(self, toPosition)
 end
 
 function Tile:isWalkable(pz, creature, floorchange, block, proj)
-	if not self then
-		return false
-	end
-	if not self:getGround() then
-		return false
-	end
-	if self:hasProperty(CONST_PROP_BLOCKSOLID) or self:hasProperty(CONST_PROP_BLOCKPROJECTILE) then
-		return false
-	end
-	if self:hasProperty(CONST_PROP_IMMOVABLEBLOCKSOLID) then
-		return false
-	end
-	if pz and (self:hasFlag(TILESTATE_HOUSE) or self:hasFlag(TILESTATE_PROTECTIONZONE)) then
-		return false
-	end
-	if creature and self:getTopCreature() ~= nil then
-		return false
-	end
-	if floorchange and self:hasFlag(TILESTATE_FLOORCHANGE) then
-		return false
-	end
+	if not self then return false end
+	if not self:getGround() then return false end
+	if self:hasProperty(CONST_PROP_BLOCKSOLID) or self:hasProperty(CONST_PROP_BLOCKPROJECTILE) then return false end
+	if pz and (self:hasFlag(TILESTATE_HOUSE) or self:hasFlag(TILESTATE_PROTECTIONZONE)) then return false end
+	if creature and self:getTopCreature() ~= nil then return false end
+	if floorchange and self:hasFlag(TILESTATE_FLOORCHANGE) then return false end
 	if block then
-		if self:hasProperty(CONST_PROP_BLOCKPATH) or self:hasProperty(CONST_PROP_IMMOVABLEBLOCKPATH) or self:hasProperty(CONST_PROP_IMMOVABLENOFIELDBLOCKPATH) or self:hasProperty(CONST_PROP_NOFIELDBLOCKPATH) then
-			return false
-		end
 		local topStackItem = self:getTopTopItem()
-		if topStackItem and topStackItem:hasProperty(CONST_PROP_BLOCKPATH) then
-			return false
-		end
+		if topStackItem and topStackItem:hasProperty(CONST_PROP_BLOCKPATH) then return false end
 	end
 	if proj then
 		local items = self:getItems()
 		if #items > 0 then
 			for i = 1, #items do
 				local itemType = ItemType(items[i])
-				local blockSolid = items[i]:hasProperty(CONST_PROP_BLOCKSOLID)
-				local blockProjectile = items[i]:hasProperty(CONST_PROP_BLOCKPROJECTILE)
-				if itemType:getType() ~= ITEM_TYPE_MAGICFIELD and not itemType:isMovable() and (blockSolid or blockProjectile) then
-					return false
-				end
+				if itemType:getType() ~= ITEM_TYPE_MAGICFIELD and not itemType:isMovable() and items[i]:hasProperty(CONST_PROP_BLOCKSOLID) then return false end
 			end
 		end
 	end
@@ -86,7 +62,7 @@ end
 -- Functions from OTServbr-Global
 function Tile.isHouse(self)
 	local house = self:getHouse()
-	return house and true or false
+	return not not house
 end
 
 function Tile.isPz(self)

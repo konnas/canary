@@ -11,10 +11,10 @@
 
 #include "io/io_bosstiary.hpp"
 
-#include "creatures/monsters/monsters.hpp"
-#include "creatures/players/player.hpp"
-#include "game/game.hpp"
-#include "utils/tools.hpp"
+#include "creatures/monsters/monsters.h"
+#include "creatures/players/player.h"
+#include "game/game.h"
+#include "utils/tools.h"
 
 void IOBosstiary::loadBoostedBoss() {
 	Database &database = Database::getInstance();
@@ -22,7 +22,7 @@ void IOBosstiary::loadBoostedBoss() {
 	query << "SELECT * FROM `boosted_boss`";
 	DBResult_ptr result = database.storeQuery(query.str());
 	if (!result) {
-		g_logger().error("[{}] Failed to detect boosted boss database. (CODE 01)", __FUNCTION__);
+		SPDLOG_ERROR("[{}] Failed to detect boosted boss database. (CODE 01)", __FUNCTION__);
 		return;
 	}
 
@@ -33,25 +33,25 @@ void IOBosstiary::loadBoostedBoss() {
 
 	auto bossMap = getBosstiaryMap();
 	if (bossMap.size() <= 1) {
-		g_logger().error("[{}] It is not possible to create a boosted boss with only one registered boss. (CODE 02)", __FUNCTION__);
+		SPDLOG_ERROR("[{}] It is not possible to create a boosted boss with only one registered boss. (CODE 02)", __FUNCTION__);
 		return;
 	}
 
 	std::string bossName;
-	uint16_t bossId = 0;
+	uint32_t bossId = 0;
 	if (date == today) {
 		bossName = result->getString("boostname");
-		bossId = result->getNumber<uint16_t>("raceid");
+		bossId = result->getNumber<uint32_t>("raceid");
 		setBossBoostedName(bossName);
 		setBossBoostedId(bossId);
-		g_logger().info("Boosted boss: {}", bossName);
+		SPDLOG_INFO("Boosted boss: {}", bossName);
 		return;
 	}
 
 	// Filter only archfoe bosses
-	std::map<uint16_t, std::string> bossInfo;
+	std::map<uint32_t, std::string> bossInfo;
 	for (auto [infoBossRaceId, infoBossName] : bossMap) {
-		const auto mType = getMonsterTypeByBossRaceId(infoBossRaceId);
+		const MonsterType* mType = getMonsterTypeByBossRaceId(infoBossRaceId);
 		if (!mType || mType->info.bosstiaryRace != BosstiaryRarity_t::RARITY_ARCHFOE) {
 			continue;
 		}
@@ -61,18 +61,14 @@ void IOBosstiary::loadBoostedBoss() {
 
 	// Check if not have archfoe registered boss
 	if (bossInfo.size() == 0) {
-		g_logger().error("Failed to boost a boss. There is no boss registered with the Archfoe Rarity.");
+		SPDLOG_ERROR("Failed to boost a boss. There is no boss registered with the Archfoe Rarity.");
 		return;
 	}
 
-	uint16_t oldBossRace = result->getNumber<uint16_t>("raceid");
+	uint32_t oldBossRace = result->getNumber<uint32_t>("raceid");
 	while (true) {
 		uint32_t randomIndex = uniform_random(0, static_cast<int32_t>(bossInfo.size()));
 		auto it = std::next(bossInfo.begin(), randomIndex);
-		if (it == bossInfo.end()) {
-			break;
-		}
-
 		const auto &[randomBossId, randomBossName] = *it;
 		if (randomBossId == oldBossRace) {
 			continue;
@@ -87,9 +83,8 @@ void IOBosstiary::loadBoostedBoss() {
 	query << "UPDATE `boosted_boss` SET ";
 	query << "`date` = '" << today << "',";
 	query << "`boostname` = " << database.escapeString(bossName) << ",";
-	if (const auto bossType = getMonsterTypeByBossRaceId(bossId);
+	if (const MonsterType* bossType = getMonsterTypeByBossRaceId(bossId);
 		bossType) {
-		query << "`looktypeEx` = " << static_cast<int>(bossType->info.outfit.lookTypeEx) << ",";
 		query << "`looktype` = " << static_cast<int>(bossType->info.outfit.lookType) << ",";
 		query << "`lookfeet` = " << static_cast<int>(bossType->info.outfit.lookFeet) << ",";
 		query << "`looklegs` = " << static_cast<int>(bossType->info.outfit.lookLegs) << ",";
@@ -100,39 +95,27 @@ void IOBosstiary::loadBoostedBoss() {
 	}
 	query << "`raceid` = '" << bossId << "'";
 	if (!database.executeQuery(query.str())) {
-		g_logger().error("[{}] Failed to detect boosted boss database. (CODE 03)", __FUNCTION__);
+		SPDLOG_ERROR("[{}] Failed to detect boosted boss database. (CODE 03)", __FUNCTION__);
 		return;
-	}
-
-	query.str(std::string());
-	query << "UPDATE `player_bosstiary` SET `bossIdSlotOne` = 0 WHERE `bossIdSlotOne` = " << bossId;
-	if (!database.executeQuery(query.str())) {
-		g_logger().error("[{}] Failed to reset players selected boss slot 1. (CODE 03)", __FUNCTION__);
-	}
-
-	query.str(std::string());
-	query << "UPDATE `player_bosstiary` SET `bossIdSlotTwo` = 0 WHERE `bossIdSlotTwo` = " << bossId;
-	if (!database.executeQuery(query.str())) {
-		g_logger().error("[{}] Failed to reset players selected boss slot 1. (CODE 03)", __FUNCTION__);
 	}
 
 	setBossBoostedName(bossName);
 	setBossBoostedId(bossId);
-	g_logger().info("Boosted boss: {}", bossName);
+	SPDLOG_INFO("Boosted boss: {}", bossName);
 }
 
-void IOBosstiary::addBosstiaryMonster(uint16_t raceId, const std::string &name) {
+void IOBosstiary::addBosstiaryMonster(uint32_t raceId, const std::string &name) {
 	if (auto it = bosstiaryMap.find(raceId);
 		it != bosstiaryMap.end()) {
 		return;
 	}
 
 	bosstiaryMap.try_emplace(raceId, name);
-	auto boss = std::pair<uint16_t, std::string>(raceId, name);
+	auto boss = std::pair<uint32_t, std::string>(raceId, name);
 	bosstiaryMap.insert(boss);
 }
 
-const std::map<uint16_t, std::string> &IOBosstiary::getBosstiaryMap() const {
+const std::map<uint32_t, std::string> &IOBosstiary::getBosstiaryMap() const {
 	return bosstiaryMap;
 }
 
@@ -144,20 +127,20 @@ std::string IOBosstiary::getBoostedBossName() const {
 	return boostedBoss;
 }
 
-void IOBosstiary::setBossBoostedId(uint16_t raceId) {
+void IOBosstiary::setBossBoostedId(uint32_t raceId) {
 	boostedBossId = raceId;
 }
 
-uint16_t IOBosstiary::getBoostedBossId() const {
+uint32_t IOBosstiary::getBoostedBossId() const {
 	return boostedBossId;
 }
 
-std::shared_ptr<MonsterType> IOBosstiary::getMonsterTypeByBossRaceId(uint16_t raceId) const {
+MonsterType* IOBosstiary::getMonsterTypeByBossRaceId(uint32_t raceId) const {
 	for ([[maybe_unused]] const auto &[bossRaceId, bossName] : getBosstiaryMap()) {
 		if (bossRaceId == raceId) {
-			const auto monsterType = g_monsters().getMonsterType(bossName);
+			MonsterType* monsterType = g_monsters().getMonsterType(bossName);
 			if (!monsterType) {
-				g_logger().error("[{}] Boss with id {} not found in boss map", __FUNCTION__, raceId);
+				SPDLOG_ERROR("[{}] Boss with id not found in boss map", raceId);
 				continue;
 			}
 
@@ -168,19 +151,18 @@ std::shared_ptr<MonsterType> IOBosstiary::getMonsterTypeByBossRaceId(uint16_t ra
 	return nullptr;
 }
 
-void IOBosstiary::addBosstiaryKill(std::shared_ptr<Player> player, const std::shared_ptr<MonsterType> mtype, uint32_t amount /*= 1*/) const {
+void IOBosstiary::addBosstiaryKill(Player* player, const MonsterType* mtype, uint32_t amount /*= 1*/) const {
 	if (!player || !mtype) {
 		return;
 	}
 
-	uint16_t bossId = mtype->info.raceid;
+	uint32_t bossId = mtype->info.bossRaceId;
 	if (bossId == 0) {
 		return;
 	}
 
 	auto oldBossLevel = getBossCurrentLevel(player, bossId);
-	player->addBestiaryKillCount(bossId, amount);
-	player->refreshCyclopediaMonsterTracker(true);
+	player->addBestiaryKillCount(static_cast<uint16_t>(bossId), amount);
 	auto newBossLevel = getBossCurrentLevel(player, bossId);
 	if (oldBossLevel == newBossLevel) {
 		return;
@@ -195,6 +177,7 @@ void IOBosstiary::addBosstiaryKill(std::shared_ptr<Player> player, const std::sh
 
 	int32_t value = player->getStorageValue(STORAGEVALUE_PODIUM);
 	if (value != 1 && newBossLevel == 2) {
+
 		auto returnValue = g_game().addItemStoreInbox(player, ITEM_PODIUM_OF_VIGOUR);
 		if (!returnValue) {
 			return;
@@ -222,9 +205,8 @@ uint16_t IOBosstiary::calculateLootBonus(uint32_t bossPoints) const {
 
 uint32_t IOBosstiary::calculateBossPoints(uint16_t lootBonus) const {
 	// Calculate Boss Points based on Bonus
-	if (lootBonus <= 25) {
+	if (lootBonus <= 25)
 		return 0;
-	}
 
 	if (lootBonus <= 50) {
 		return 10 * lootBonus - 250;
@@ -234,19 +216,20 @@ uint32_t IOBosstiary::calculateBossPoints(uint16_t lootBonus) const {
 	return static_cast<uint32_t>((2.5 * lootBonus * lootBonus) - (477.5 * lootBonus) + 24000);
 }
 
-std::vector<uint16_t> IOBosstiary::getBosstiaryFinished(const std::shared_ptr<Player> &player, uint8_t level /* = 1*/) const {
+std::vector<uint32_t> IOBosstiary::getBosstiaryFinished(const Player* player, uint8_t level /* = 1*/) const {
+	std::vector<uint32_t> unlockedMonsters;
 	if (!player) {
-		return {};
+		return unlockedMonsters;
 	}
 
-	stdext::vector_set<uint16_t> unlockedMonsters;
-	for (const auto &[bossId, bossName] : getBosstiaryMap()) {
-		uint32_t bossKills = player->getBestiaryKillCount(bossId);
+	for (std::map<uint32_t, std::string> bossesMap = getBosstiaryMap();
+		 const auto &[bossId, bossName] : bossesMap) {
+		uint32_t bossKills = player->getBestiaryKillCount(static_cast<uint16_t>(bossId));
 		if (bossKills == 0) {
 			continue;
 		}
 
-		const auto mType = g_monsters().getMonsterType(bossName);
+		const MonsterType* mType = g_monsters().getMonsterType(bossName);
 		if (!mType) {
 			continue;
 		}
@@ -257,17 +240,17 @@ std::vector<uint16_t> IOBosstiary::getBosstiaryFinished(const std::shared_ptr<Pl
 			const std::vector<LevelInfo> &infoForCurrentRace = it->second;
 			auto levelKills = infoForCurrentRace.at(level - 1).kills;
 			if (bossKills >= levelKills) {
-				unlockedMonsters.emplace(bossId);
+				unlockedMonsters.push_back(bossId);
 			}
 		} else {
-			g_logger().warn("[{}] boss with id {} and name {} not found in bossRace", __FUNCTION__, bossId, bossName);
+			SPDLOG_WARN("[{}] boss with id {} and name {} not found in bossRace", __FUNCTION__, bossId, bossName);
 		}
 	}
 
-	return unlockedMonsters.data();
+	return unlockedMonsters;
 }
 
-uint8_t IOBosstiary::getBossCurrentLevel(std::shared_ptr<Player> player, uint16_t bossId) const {
+uint8_t IOBosstiary::getBossCurrentLevel(const Player* player, uint32_t bossId) const {
 	if (bossId == 0 || !player) {
 		return 0;
 	}
@@ -277,7 +260,7 @@ uint8_t IOBosstiary::getBossCurrentLevel(std::shared_ptr<Player> player, uint16_
 		return 0;
 	}
 
-	uint32_t currentKills = player->getBestiaryKillCount(bossId);
+	uint32_t currentKills = player->getBestiaryKillCount(static_cast<uint16_t>(bossId));
 	auto bossRace = mType->info.bosstiaryRace;
 	uint8_t level = 0;
 	if (auto it = levelInfos.find(bossRace);
@@ -289,25 +272,42 @@ uint8_t IOBosstiary::getBossCurrentLevel(std::shared_ptr<Player> player, uint16_
 			}
 		}
 	} else {
-		g_logger().warn("[{}] boss with id {} and name {} not found in bossRace", __FUNCTION__, bossId, mType->name);
+		SPDLOG_WARN("[{}] boss with id {} and name {} not found in bossRace", __FUNCTION__, bossId, mType->name);
 	}
 
 	return level;
 }
 
 uint32_t IOBosstiary::calculteRemoveBoss(uint8_t removeTimes) const {
-	if (removeTimes < 2) {
+	if (removeTimes < 2)
 		return 0;
-	}
 	return 300000 * removeTimes - 500000;
 }
 
-const std::vector<LevelInfo> &IOBosstiary::getBossRaceKillStages(BosstiaryRarity_t race) const {
-	auto it = levelInfos.find(race);
-	if (it != levelInfos.end()) {
-		return it->second;
+std::vector<uint32_t> IOBosstiary::getBosstiaryCooldown(const Player* player) const {
+	std::vector<uint32_t> bossesCooldown;
+	if (!player) {
+		return bossesCooldown;
 	}
 
-	static std::vector<LevelInfo> emptyVector;
-	return emptyVector;
+	for (std::map<uint32_t, std::string> bossesMap = getBosstiaryMap();
+		 const auto &[bossId, bossName] : bossesMap) {
+		uint32_t bossKills = player->getBestiaryKillCount(static_cast<uint16_t>(bossId));
+
+		const MonsterType* mType = g_monsters().getMonsterType(bossName);
+		if (!mType) {
+			continue;
+		}
+
+		auto bossStorage = mType->info.bossStorageCooldown;
+		if (bossStorage == 0) {
+			continue;
+		}
+
+		if (bossKills >= 1 || player->getStorageValue(bossStorage) > 0) {
+			bossesCooldown.push_back(bossId);
+		}
+	}
+
+	return bossesCooldown;
 }

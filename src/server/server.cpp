@@ -9,17 +9,19 @@
 
 #include "pch.hpp"
 
-#include "server/network/message/outputmessage.hpp"
-#include "server/server.hpp"
-#include "config/configmanager.hpp"
-#include "game/scheduling/dispatcher.hpp"
-#include "creatures/players/management/ban.hpp"
+#include "server/network/message/outputmessage.h"
+#include "server/server.h"
+#include "config/configmanager.h"
+#include "game/scheduling/scheduler.h"
+#include "creatures/players/management/ban.h"
+
+Ban g_bans;
 
 ServiceManager::~ServiceManager() {
 	try {
 		stop();
 	} catch (std::exception &exception) {
-		g_logger().error("{} - Catch exception error: {}", __FUNCTION__, exception.what());
+		SPDLOG_ERROR("{} - Catch exception error: {}", __FUNCTION__, exception.what());
 	}
 }
 
@@ -44,7 +46,7 @@ void ServiceManager::stop() {
 		try {
 			io_service.post(std::bind_front(&ServicePort::onStopServer, servicePortIt.second));
 		} catch (const std::system_error &e) {
-			g_logger().warn("[ServiceManager::stop] - Network error: {}", e.what());
+			SPDLOG_WARN("[ServiceManager::stop] - Network error: {}", e.what());
 		}
 	}
 
@@ -92,12 +94,12 @@ void ServicePort::onAccept(Connection_ptr connection, const std::error_code &err
 		}
 
 		auto remote_ip = connection->getIP();
-		if (remote_ip != 0 && inject<Ban>().acceptConnection(remote_ip)) {
+		if (remote_ip != 0 && g_bans.acceptConnection(remote_ip)) {
 			Service_ptr service = services.front();
 			if (service->is_single_socket()) {
 				connection->accept(service->make_protocol(connection));
 			} else {
-				connection->acceptInternal();
+				connection->accept();
 			}
 		} else {
 			connection->close(FORCE_CLOSE);
@@ -108,7 +110,7 @@ void ServicePort::onAccept(Connection_ptr connection, const std::error_code &err
 		if (!pendingStart) {
 			close();
 			pendingStart = true;
-			g_dispatcher().scheduleEvent(15000, std::bind_front(&ServicePort::openAcceptor, std::weak_ptr<ServicePort>(shared_from_this()), serverPort), "ServicePort::openAcceptor");
+			g_scheduler().addEvent(createSchedulerTask(15000, std::bind_front(&ServicePort::openAcceptor, std::weak_ptr<ServicePort>(shared_from_this()), serverPort)));
 		}
 	}
 }
@@ -144,8 +146,8 @@ void ServicePort::open(uint16_t port) {
 	pendingStart = false;
 
 	try {
-		if (g_configManager().getBoolean(BIND_ONLY_GLOBAL_ADDRESS, __FUNCTION__)) {
-			acceptor.reset(new asio::ip::tcp::acceptor(io_service, asio::ip::tcp::endpoint(asio::ip::address(asio::ip::address_v4::from_string(g_configManager().getString(IP, __FUNCTION__))), serverPort)));
+		if (g_configManager().getBoolean(BIND_ONLY_GLOBAL_ADDRESS)) {
+			acceptor.reset(new asio::ip::tcp::acceptor(io_service, asio::ip::tcp::endpoint(asio::ip::address(asio::ip::address_v4::from_string(g_configManager().getString(IP))), serverPort)));
 		} else {
 			acceptor.reset(new asio::ip::tcp::acceptor(io_service, asio::ip::tcp::endpoint(asio::ip::address(asio::ip::address_v4(INADDR_ANY)), serverPort)));
 		}
@@ -154,10 +156,10 @@ void ServicePort::open(uint16_t port) {
 
 		accept();
 	} catch (const std::system_error &e) {
-		g_logger().warn("[ServicePort::open] - Error code: {}", e.what());
+		SPDLOG_WARN("[ServicePort::open] - Error code: {}", e.what());
 
 		pendingStart = true;
-		g_dispatcher().scheduleEvent(15000, std::bind_front(&ServicePort::openAcceptor, std::weak_ptr<ServicePort>(shared_from_this()), port), "ServicePort::openAcceptor");
+		g_scheduler().addEvent(createSchedulerTask(15000, std::bind_front(&ServicePort::openAcceptor, std::weak_ptr<ServicePort>(shared_from_this()), port)));
 	}
 }
 

@@ -7,12 +7,13 @@
  * Website: https://docs.opentibiabr.com/
  */
 
-#pragma once
+#ifndef SRC_ITEMS_FUNCTIONS_ITEM_ITEM_PARSE_HPP_
+#define SRC_ITEMS_FUNCTIONS_ITEM_ITEM_PARSE_HPP_
 
-#include "creatures/combat/condition.hpp"
+#include "creatures/combat/condition.h"
 #include "declarations.hpp"
-#include "items/item.hpp"
-#include "items/items.hpp"
+#include "items/item.h"
+#include "items/items.h"
 
 class ConditionDamage;
 
@@ -30,8 +31,8 @@ const phmap::flat_hash_map<std::string, ItemParseAttributes_t> ItemParseAttribut
 	{ "wrapcontainer", ITEM_PARSE_WRAPCONTAINER },
 	{ "wrapableto", ITEM_PARSE_WRAPABLETO },
 	{ "unwrapableto", ITEM_PARSE_WRAPABLETO },
-	{ "movable", ITEM_PARSE_MOVABLE },
-	{ "movable", ITEM_PARSE_MOVABLE },
+	{ "moveable", ITEM_PARSE_MOVEABLE },
+	{ "movable", ITEM_PARSE_MOVEABLE },
 	{ "blockprojectile", ITEM_PARSE_BLOCKPROJECTILE },
 	{ "allowpickupable", ITEM_PARSE_PICKUPABLE },
 	{ "pickupable", ITEM_PARSE_PICKUPABLE },
@@ -84,9 +85,8 @@ const phmap::flat_hash_map<std::string, ItemParseAttributes_t> ItemParseAttribut
 	{ "maxhitpointspercent", ITEM_PARSE_MAXHITPOINTSPERCENT },
 	{ "maxmanapoints", ITEM_PARSE_MAXMANAPOINTS },
 	{ "maxmanapointspercent", ITEM_PARSE_MAXMANAPOINTSPERCENT },
-	{ "magiclevelpoints", ITEM_PARSE_MAGICLEVELPOINTS },
-	{ "magicpoints", ITEM_PARSE_MAGICLEVELPOINTS },
-	{ "magicpointspercent", ITEM_PARSE_MAGICLEVELPOINTSPERCENT },
+	{ "magicpoints", ITEM_PARSE_MAGICPOINTS },
+	{ "magicpointspercent", ITEM_PARSE_MAGICPOINTSPERCENT },
 	{ "fieldabsorbpercentenergy", ITEM_PARSE_FIELDABSORBPERCENTENERGY },
 	{ "fieldabsorbpercentfire", ITEM_PARSE_FIELDABSORBPERCENTFIRE },
 	{ "fieldabsorbpercentpoison", ITEM_PARSE_FIELDABSORBPERCENTPOISON },
@@ -124,9 +124,7 @@ const phmap::flat_hash_map<std::string, ItemParseAttributes_t> ItemParseAttribut
 	{ "malesleeper", ITEM_PARSE_MALETRANSFORMTO },
 	{ "femaletransformto", ITEM_PARSE_FEMALETRANSFORMTO },
 	{ "femalesleeper", ITEM_PARSE_FEMALETRANSFORMTO },
-	{ "bedpart", ITEM_PARSE_PARTNERDIRECTION },
-	{ "bedpartof", ITEM_PARSE_PARTNERDIRECTION },
-	{ "transformonuse", ITEM_PARSE_TRANSFORMONUSE },
+	{ "transformto", ITEM_PARSE_TRANSFORMTO },
 	{ "destroyto", ITEM_PARSE_DESTROYTO },
 	{ "elementice", ITEM_PARSE_ELEMENTICE },
 	{ "elementearth", ITEM_PARSE_ELEMENTEARTH },
@@ -138,25 +136,6 @@ const phmap::flat_hash_map<std::string, ItemParseAttributes_t> ItemParseAttribut
 	{ "blocking", ITEM_PARSE_BLOCK_SOLID },
 	{ "allowdistread", ITEM_PARSE_ALLOWDISTREAD },
 	{ "imbuementslot", ITEM_PARSE_IMBUEMENT },
-	{ "stacksize", ITEM_PARSE_STACKSIZE },
-	// 12.72 modifiers
-	{ "deathmagiclevelpoints", ITEM_PARSE_DEATHMAGICLEVELPOINTS },
-	{ "energymagiclevelpoints", ITEM_PARSE_ENERGYMAGICLEVELPOINTS },
-	{ "earthmagiclevelpoints", ITEM_PARSE_EARTHMAGICLEVELPOINTS },
-	{ "firemagiclevelpoints", ITEM_PARSE_EARTHMAGICLEVELPOINTS },
-	{ "icemagiclevelpoints", ITEM_PARSE_ICEMAGICLEVELPOINTS },
-	{ "holymagiclevelpoints", ITEM_PARSE_HOLYMAGICLEVELPOINTS },
-	{ "healingmagiclevelpoints", ITEM_PARSE_HEALINGMAGICLEVELPOINTS },
-	{ "physicalmagiclevelpoints", ITEM_PARSE_PHYSICALMAGICLEVELPOINTS },
-	{ "magicshieldcapacitypercent", ITEM_PARSE_MAGICSHIELDCAPACITYPERCENT },
-	{ "magicshieldcapacityflat", ITEM_PARSE_MAGICSHIELDCAPACITYFLAT },
-	{ "perfectshotdamage", ITEM_PARSE_PERFECTSHOTDAMAGE },
-	{ "perfectshotrange", ITEM_PARSE_PERFECTSHOTRANGE },
-	{ "cleavepercent", ITEM_PARSE_CLEAVEPERCENT },
-	{ "reflectdamage", ITEM_PARSE_REFLECTDAMAGE },
-	{ "reflectpercentall", ITEM_PARSE_REFLECTPERCENTALL },
-	{ "primarytype", ITEM_PARSE_PRIMARYTYPE },
-	{ "usedbyhouseguests", ITEM_PARSE_USEDBYGUESTS },
 };
 
 const phmap::flat_hash_map<std::string, ItemTypes_t> ItemTypesMap = {
@@ -177,9 +156,6 @@ const phmap::flat_hash_map<std::string, ItemTypes_t> ItemTypesMap = {
 	{ "food", ITEM_TYPE_FOOD },
 	{ "valuable", ITEM_TYPE_VALUABLE },
 	{ "potion", ITEM_TYPE_POTION },
-
-	{ "ladder", ITEM_TYPE_LADDER },
-	{ "dummy", ITEM_TYPE_DUMMY },
 };
 
 const phmap::flat_hash_map<std::string, TileFlags_t> TileStatesMap = {
@@ -247,75 +223,67 @@ const phmap::flat_hash_map<std::string, ImbuementTypes_t> ImbuementsTypeMap = {
 };
 
 class ItemParse : public Items {
-public:
-	static void initParse(const std::string &tmpStrValue, pugi::xml_node attributeNode, pugi::xml_attribute valueAttribute, ItemType &itemType);
+	public:
+		static void initParse(const std::string &tmpStrValue, pugi::xml_node attributeNode, pugi::xml_attribute valueAttribute, ItemType &itemType);
 
-private:
-	static void parseDummyRate(pugi::xml_node attributeNode, ItemType &itemType);
-	static void parseType(const std::string &tmpStrValue, pugi::xml_node attributeNode, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseDescription(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseRuneSpellName(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseWeight(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseShowCount(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseArmor(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseDefense(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseExtraDefense(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseAttack(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseRotateTo(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseWrapContainer(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseWrapableTo(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseMovable(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseBlockProjectTile(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parsePickupable(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseFloorChange(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseContainerSize(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseFluidSource(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseWriteables(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseWeaponType(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseSlotType(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseAmmoType(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseShootType(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseMagicEffect(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseLootType(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseRange(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseDecayTo(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseDuration(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseTransform(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseCharges(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseShowAttributes(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseHitChance(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseInvisible(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseSpeed(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseHealthAndMana(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseSkills(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseCriticalHit(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseLifeAndManaLeech(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseMaxHitAndManaPoints(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseMagicLevelPoint(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseFieldAbsorbPercent(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseAbsorbPercent(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseSupressDrunk(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseField(const std::string &tmpStrValue, pugi::xml_node attributeNode, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseReplaceable(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseLevelDoor(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseBeds(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseElement(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseWalk(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseAllowDistanceRead(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseImbuement(const std::string &tmpStrValue, pugi::xml_node attributeNode, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseStackSize(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseSpecializedMagicLevelPoint(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseMagicShieldCapacity(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parsePerfecShot(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseCleavePercent(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseReflectDamage(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseTransformOnUse(const std::string_view &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parsePrimaryType(const std::string_view &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
-	static void parseHouseRelated(const std::string_view &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+	protected:
+		static void parseType(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseDescription(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseRuneSpellName(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseWeight(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseShowCount(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseArmor(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseDefense(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseExtraDefense(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseAttack(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseRotateTo(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseWrapContainer(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseWrapableTo(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseMoveable(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseBlockProjectTile(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parsePickupable(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseFloorChange(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseContainerSize(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseFluidSource(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseWriteables(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseWeaponType(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseSlotType(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseAmmoType(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseShootType(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseMagicEffect(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseLootType(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseRange(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseDecayTo(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseDuration(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseTransform(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseCharges(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseShowAttributes(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseHitChance(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseInvisible(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseSpeed(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseHealthAndMana(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseSkills(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseCriticalHit(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseLifeAndManaLeech(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseMaxHitAndManaPoints(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseMagicPoints(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseFieldAbsorbPercent(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseAbsorbPercent(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseSupressDrunk(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseField(const std::string &tmpStrValue, pugi::xml_node attributeNode, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseReplaceable(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseLevelDoor(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseBeds(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseElement(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseWalk(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseAllowDistanceRead(const std::string &tmpStrValue, pugi::xml_attribute valueAttribute, ItemType &itemType);
+		static void parseImbuement(const std::string &tmpStrValue, pugi::xml_node attributeNode, pugi::xml_attribute valueAttribute, ItemType &itemType);
 
-private:
-	// Parent of the function: static void parseField
-	static std::tuple<ConditionId_t, ConditionType_t> parseFieldConditions(std::string lowerStringValue, pugi::xml_attribute valueAttribute);
-	static CombatType_t parseFieldCombatType(std::string string, pugi::xml_attribute valueAttribute);
-	static void parseFieldCombatDamage(std::shared_ptr<ConditionDamage> conditionDamage, std::string stringValue, pugi::xml_node attributeNode);
+	private:
+		// Parent of the function: static void parseField
+		static std::tuple<ConditionId_t, ConditionType_t> parseFieldConditions(std::string lowerStringValue, pugi::xml_attribute valueAttribute);
+		static CombatType_t parseFieldCombatType(std::string string, pugi::xml_attribute valueAttribute);
+		static void parseFieldCombatDamage(ConditionDamage* conditionDamage, std::string stringValue, pugi::xml_node attributeNode);
 };
+
+#endif // SRC_ITEMS_FUNCTIONS_ITEM_PARSE_HPP_

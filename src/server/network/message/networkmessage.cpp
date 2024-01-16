@@ -9,8 +9,9 @@
 
 #include "pch.hpp"
 
-#include "server/network/message/networkmessage.hpp"
-#include "items/containers/container.hpp"
+#include "server/network/message/networkmessage.h"
+#include "items/containers/container.h"
+#include "creatures/creature.h"
 
 int32_t NetworkMessage::decodeHeader() {
 	int32_t newSize = buffer[0] | buffer[1] << 8;
@@ -40,17 +41,17 @@ Position NetworkMessage::getPosition() {
 	return pos;
 }
 
-void NetworkMessage::addString(const std::string &value, const std::string &function) {
+void NetworkMessage::addString(const std::string &value) {
 	size_t stringLen = value.length();
 	if (value.empty()) {
-		g_logger().debug("[NetworkMessage::addString] - Value string is empty, function '{}'", function);
+		SPDLOG_DEBUG("[NetworkMessage::addString] - Value string is empty");
 	}
 	if (!canAdd(stringLen + 2)) {
-		g_logger().error("[NetworkMessage::addString] - NetworkMessage size is wrong: {}, function '{}'", stringLen, function);
+		SPDLOG_ERROR("[NetworkMessage::addString] - NetworkMessage size is wrong: {}", stringLen);
 		return;
 	}
 	if (stringLen > NETWORKMESSAGE_MAXSIZE) {
-		g_logger().error("[NetworkMessage::addString] - Exceded NetworkMessage max size: {}, actually size: {}, function '{}'", NETWORKMESSAGE_MAXSIZE, stringLen, function);
+		SPDLOG_ERROR("[NetworkMessage::addString] - Exceded NetworkMessage max size: {}, actually size: {}", NETWORKMESSAGE_MAXSIZE, stringLen);
 		return;
 	}
 
@@ -67,15 +68,15 @@ void NetworkMessage::addDouble(double value, uint8_t precision /* = 2*/) {
 
 void NetworkMessage::addBytes(const char* bytes, size_t size) {
 	if (bytes == nullptr) {
-		g_logger().error("[NetworkMessage::addBytes] - Bytes is nullptr");
+		SPDLOG_ERROR("[NetworkMessage::addBytes] - Bytes is nullptr");
 		return;
 	}
 	if (!canAdd(size)) {
-		g_logger().error("[NetworkMessage::addBytes] - NetworkMessage size is wrong: {}", size);
+		SPDLOG_ERROR("[NetworkMessage::addBytes] - NetworkMessage size is wrong: {}", size);
 		return;
 	}
 	if (size > NETWORKMESSAGE_MAXSIZE) {
-		g_logger().error("[NetworkMessage::addBytes] - Exceded NetworkMessage max size: {}, actually size: {}", NETWORKMESSAGE_MAXSIZE, size);
+		SPDLOG_ERROR("[NetworkMessage::addBytes] - Exceded NetworkMessage max size: {}, actually size: {}", NETWORKMESSAGE_MAXSIZE, size);
 		return;
 	}
 

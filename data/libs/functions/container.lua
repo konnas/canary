@@ -2,65 +2,65 @@ function Container.isContainer(self)
 	return true
 end
 
----@alias LootItems table<number, {count: number, subType?: number, text?: string, actionId?: number, gut?: boolean, childLoot: LootItems}>
-
----@param loot LootItems
-function Container:addLoot(loot)
-	for itemId, item in pairs(loot) do
-		local iType = ItemType(itemId)
-		if not iType then
-			logger.warn("Container:addLoot: invalid item type: {}", itemId)
-			goto continue
-		end
-		if iType:isStackable() then
-			local stackSize = iType:getStackSize()
-			local remainingCount = item.count
-
-			while remainingCount > 0 do
-				local countToAdd = math.min(remainingCount, stackSize)
-				local tmpItem = self:addItem(itemId, countToAdd, INDEX_WHEREEVER, FLAG_NOLIMIT)
-				if not tmpItem then
-					logger.warn("Container:addLoot: failed to add stackable item: {}, to corpse {} with id {}", ItemType(itemId):getName(), self:getName(), self:getId())
-					goto continue
-				end
-				remainingCount = remainingCount - countToAdd
-			end
-		elseif iType:getCharges() ~= 0 then
-			local tmpItem = self:addItem(itemId, item.count, INDEX_WHEREEVER, FLAG_NOLIMIT)
-			if not tmpItem then
-				logger.warn("Container:addLoot: failed to add charge item: {}, to corpse {} with id {}", ItemType(itemId):getName(), self:getName(), self:getId())
-			end
-		else
-			for i = 1, item.count do
-				local tmpItem = self:addItem(itemId, 1, INDEX_WHEREEVER, FLAG_NOLIMIT)
-				if not tmpItem then
-					logger.warn("Container:addLoot: failed to add item: {}, to corpse {} with id {}", ItemType(itemId):getName(), self:getName(), self:getId())
-					goto continue
-				end
-
-				if tmpItem:isContainer() and item.childLoot then
-					if not tmpItem:addLoot(item.childLoot) then
-						tmpItem:remove()
-						goto continue
-					end
-				end
-
-				if item.subType ~= -1 then
-					tmpItem:transform(itemId, item.subType)
-				elseif iType:isFluidContainer() then
-					tmpItem:transform(itemId, 0)
-				end
-
-				if item.actionId ~= -1 then
-					tmpItem:setActionId(item.actionId)
-				end
-
-				if item.text and item.text ~= "" then
-					tmpItem:setText(item.text)
-				end
-			end
-		end
-
-		::continue::
+function Container.createLootItem(self, item, charm)
+	if self:getEmptySlots() == 0 then
+		return true
 	end
+
+	local itemCount = 0
+	local randvalue = getLootRandom()
+	local lootBlockType = ItemType(item.itemId)
+	local chanceTo = item.chance
+
+	if not lootBlockType then
+		return
+	end
+
+	-- Bestiary charm bonus
+	if charm and lootBlockType:getType() == ITEM_TYPE_CREATUREPRODUCT then
+		chanceTo = math.ceil((chanceTo * GLOBAL_CHARM_GUT) / 100)
+	end
+
+	if randvalue < chanceTo then
+		if lootBlockType:isStackable() then
+			local maxc, minc = item.maxCount or 1, item.minCount or 1
+			itemCount = math.max(0, randvalue % (maxc - minc + 1)) + minc
+		else
+			itemCount = 1
+		end
+	end
+	
+	while (itemCount > 0) do
+		local n = math.min(itemCount, 100)
+		itemCount = itemCount - n
+		
+		local tmpItem = self:addItem(item.itemId, n)
+		if not tmpItem then
+			return false
+		end
+
+		if tmpItem:isContainer() then
+			for i = 1, #item.childLoot do
+				if not tmpItem:createLootItem(item.childLoot[i], charm) then
+					tmpItem:remove()
+					return false
+				end
+			end
+		end
+
+		if item.subType ~= -1 then
+			tmpItem:transform(item.itemId, item.subType)
+		elseif lootBlockType:isFluidContainer() then
+			tmpItem:transform(item.itemId, 0)
+		end
+
+		if item.actionId ~= -1 then
+			tmpItem:setActionId(item.actionId)
+		end
+
+		if item.text and item.text ~= "" then
+			tmpItem:setText(item.text)
+		end
+	end
+	return true
 end

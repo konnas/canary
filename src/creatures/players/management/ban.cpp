@@ -9,13 +9,13 @@
 
 #include "pch.hpp"
 
-#include "creatures/players/management/ban.hpp"
-#include "database/database.hpp"
-#include "database/databasetasks.hpp"
-#include "utils/tools.hpp"
+#include "creatures/players/management/ban.h"
+#include "database/database.h"
+#include "database/databasetasks.h"
+#include "utils/tools.h"
 
 bool Ban::acceptConnection(uint32_t clientIP) {
-	std::scoped_lock<std::recursive_mutex> lockClass(lock);
+	std::lock_guard<std::recursive_mutex> lockClass(lock);
 
 	uint64_t currentTime = OTSYS_TIME();
 
@@ -63,11 +63,11 @@ bool IOBan::isAccountBanned(uint32_t accountId, BanInfo &banInfo) {
 		// Move the ban to history if it has expired
 		query.str(std::string());
 		query << "INSERT INTO `account_ban_history` (`account_id`, `reason`, `banned_at`, `expired_at`, `banned_by`) VALUES (" << accountId << ',' << db.escapeString(result->getString("reason")) << ',' << result->getNumber<time_t>("banned_at") << ',' << expiresAt << ',' << result->getNumber<uint32_t>("banned_by") << ')';
-		g_databaseTasks().execute(query.str());
+		g_databaseTasks().addTask(query.str());
 
 		query.str(std::string());
 		query << "DELETE FROM `account_bans` WHERE `account_id` = " << accountId;
-		g_databaseTasks().execute(query.str());
+		g_databaseTasks().addTask(query.str());
 		return false;
 	}
 
@@ -96,7 +96,7 @@ bool IOBan::isIpBanned(uint32_t clientIP, BanInfo &banInfo) {
 	if (expiresAt != 0 && time(nullptr) > expiresAt) {
 		query.str(std::string());
 		query << "DELETE FROM `ip_bans` WHERE `ip` = " << clientIP;
-		g_databaseTasks().execute(query.str());
+		g_databaseTasks().addTask(query.str());
 		return false;
 	}
 

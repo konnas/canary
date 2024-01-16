@@ -23,11 +23,11 @@ function Player.setDayStreak(self, value)
 end
 
 function Player.getStreakLevel(self)
-	return self:kv():scoped("daily-reward"):get("streak") or 7
+	return math.max(self:getStorageValue(DailyReward.storages.currentStreakLevel), 0)
 end
 
 function Player.setStreakLevel(self, value)
-	self:kv():scoped("daily-reward"):set("streak", value)
+	self:setStorageValue(DailyReward.storages.currentStreakLevel, value)
 end
 
 function Player.setNextRewardTime(self, value)
@@ -99,7 +99,7 @@ function Player.loadDailyRewardBonuses(self)
 	local streakLevel = self:getStreakLevel()
 	-- Stamina regeneration
 	if streakLevel >= DAILY_REWARD_STAMINA_REGENERATION then
-		local staminaEvent = DailyRewardBonus.Stamina[self:getId()]
+	local staminaEvent = DailyRewardBonus.Stamina[self:getId()]
 		if not staminaEvent then
 			local delay = 3
 			if self:getStamina() > 2340 and self:getStamina() <= 2520 then
@@ -116,5 +116,6 @@ function Player.loadDailyRewardBonuses(self)
 			DailyRewardBonus.Soul[self:getId()] = addEvent(RegenSoul, delay, self:getId(), delay)
 		end
 	end
-	logger.debug("Player: {}, streak level: {}, active bonuses: {}", self:getName(), streakLevel, self:getActiveDailyRewardBonusesName())
+	Spdlog.debug(string.format("Player: %s, streak level: %d, active bonuses: %s",
+		self:getName(), streakLevel, self:getActiveDailyRewardBonusesName()))
 end

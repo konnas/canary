@@ -7,9 +7,10 @@
  * Website: https://docs.opentibiabr.com/
  */
 
-#pragma once
+#ifndef SRC_GAME_GAME_DEFINITIONS_HPP_
+#define SRC_GAME_GAME_DEFINITIONS_HPP_
 
-#include "movement/position.hpp"
+#include "movement/position.h"
 
 // Enums
 enum StackPosType_t {
@@ -104,25 +105,27 @@ enum HighscoreType_t : uint8_t {
 };
 
 enum Webhook_Colors_t : uint32_t {
-	WEBHOOK_COLOR_GREEN = 0x00FF00,
-	WEBHOOK_COLOR_RED = 0xFF0000,
-	WEBHOOK_COLOR_YELLOW = 0xFFFF00,
-	WEBHOOK_COLOR_BLUE = 0x0000FF
+	WEBHOOK_COLOR_ONLINE = 0x00FF00,
+	WEBHOOK_COLOR_OFFLINE = 0xFF0000,
+	WEBHOOK_COLOR_WARNING = 0xFFFF00,
+	WEBHOOK_COLOR_RAID = 0x0000FF
 };
 
 // Structs
 struct ModalWindow {
-	std::list<std::pair<std::string, uint8_t>> buttons, choices;
-	std::string title, message;
-	uint32_t id;
-	uint8_t defaultEnterButton, defaultEscapeButton;
-	bool priority;
+		std::list<std::pair<std::string, uint8_t>> buttons, choices;
+		std::string title, message;
+		uint32_t id;
+		uint8_t defaultEnterButton, defaultEscapeButton;
+		bool priority;
 
-	ModalWindow(uint32_t newId, std::string newTitle, std::string newMessage) :
-		title(std::move(newTitle)),
-		message(std::move(newMessage)),
-		id(newId),
-		defaultEnterButton(0xFF),
-		defaultEscapeButton(0xFF),
-		priority(false) { }
+		ModalWindow(uint32_t newId, std::string newTitle, std::string newMessage) :
+			title(std::move(newTitle)),
+			message(std::move(newMessage)),
+			id(newId),
+			defaultEnterButton(0xFF),
+			defaultEscapeButton(0xFF),
+			priority(false) { }
 };
+
+#endif // SRC_GAME_GAME_DEFINITIONS_HPP_

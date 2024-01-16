@@ -12,10 +12,6 @@ ExerciseWeaponsTable = {
 	[28542] = { skill = SKILL_CLUB },
 	[35281] = { skill = SKILL_CLUB },
 	[35287] = { skill = SKILL_CLUB },
-	[44064] = { skill = SKILL_SHIELD },
-	[44065] = { skill = SKILL_SHIELD },
-	[44066] = { skill = SKILL_SHIELD },
-	[44067] = { skill = SKILL_SHIELD },
 	-- ROD
 	[28544] = { skill = SKILL_MAGLEVEL, effect = CONST_ANI_SMALLICE, allowFarUse = true },
 	[28556] = { skill = SKILL_MAGLEVEL, effect = CONST_ANI_SMALLICE, allowFarUse = true },
@@ -30,15 +26,20 @@ ExerciseWeaponsTable = {
 	[28545] = { skill = SKILL_MAGLEVEL, effect = CONST_ANI_FIRE, allowFarUse = true },
 	[28557] = { skill = SKILL_MAGLEVEL, effect = CONST_ANI_FIRE, allowFarUse = true },
 	[35284] = { skill = SKILL_MAGLEVEL, effect = CONST_ANI_FIRE, allowFarUse = true },
-	[35290] = { skill = SKILL_MAGLEVEL, effect = CONST_ANI_FIRE, allowFarUse = true },
+	[35290] = { skill = SKILL_MAGLEVEL, effect = CONST_ANI_FIRE, allowFarUse = true }
 }
 
-local dummies = Game.getDummies()
+FreeDummies = {28558, 28565}
+MaxAllowedOnADummy = configManager.getNumber(configKeys.MAX_ALLOWED_ON_A_DUMMY)
+HouseDummies = {28559, 28560, 28561, 28562, 28563, 28564}
+
+local magicLevelRate = configManager.getNumber(configKeys.RATE_MAGIC)
+local skillLevelRate = configManager.getNumber(configKeys.RATE_SKILL)
 
 function LeaveTraining(playerId)
-	if _G.OnExerciseTraining[playerId] then
-		stopEvent(_G.OnExerciseTraining[playerId].event)
-		_G.OnExerciseTraining[playerId] = nil
+	if onExerciseTraining[playerId] then
+		stopEvent(onExerciseTraining[playerId].event)
+		onExerciseTraining[playerId] = nil
 	end
 
 	local player = Player(playerId)
@@ -55,7 +56,6 @@ function ExerciseEvent(playerId, tilePosition, weaponId, dummyId)
 	end
 
 	if player:isTraining() == 0 then
-		player:sendTextMessage(MESSAGE_FAILURE, "You have stopped training.")
 		return LeaveTraining(playerId)
 	end
 
@@ -94,15 +94,14 @@ function ExerciseEvent(playerId, tilePosition, weaponId, dummyId)
 	end
 
 	local isMagic = ExerciseWeaponsTable[weaponId].skill == SKILL_MAGLEVEL
-	if not dummies[dummyId] then
-		return false
-	end
-	local rate = dummies[dummyId] / 100
+	local bonusDummy = table.contains(HouseDummies, dummyId) or nil
+
+	if bonusDummy then bonusDummy = 1.1 else bonusDummy = 1 end
 
 	if isMagic then
-		player:addManaSpent(500 * rate)
+		player:addManaSpent(500 * bonusDummy)
 	else
-		player:addSkillTries(ExerciseWeaponsTable[weaponId].skill, 7 * rate)
+		player:addSkillTries(ExerciseWeaponsTable[weaponId].skill, 7 * bonusDummy)
 	end
 
 	weapon:setAttribute(ITEM_ATTRIBUTE_CHARGES, (weaponCharges - 1))
@@ -120,6 +119,6 @@ function ExerciseEvent(playerId, tilePosition, weaponId, dummyId)
 	end
 
 	local vocation = player:getVocation()
-	_G.OnExerciseTraining[playerId].event = addEvent(ExerciseEvent, vocation:getBaseAttackSpeed() / configManager.getFloat(configKeys.RATE_EXERCISE_TRAINING_SPEED), playerId, tilePosition, weaponId, dummyId)
+	onExerciseTraining[playerId].event = addEvent(ExerciseEvent, vocation:getBaseAttackSpeed() / configManager.getFloat(configKeys.RATE_EXERCISE_TRAINING_SPEED), playerId, tilePosition, weaponId, dummyId)
 	return true
 end

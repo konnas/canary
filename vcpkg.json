@@ -2,30 +2,23 @@
   "name": "canary",
   "version-string": "1.0.0",
   "dependencies": [
-    "abseil",
-    "argon2",
     "asio",
-    "bext-di",
-    "bext-ut",
-    "curl",
-    "eventpp",
-    "jsoncpp",
-    "luajit",
-    "magic-enum",
-    "mio",
-    {
-      "name": "opentelemetry-cpp",
-      "default-features": true,
-      "features": ["otlp-http", "prometheus"]
-    },
-    "parallel-hashmap",
-    "protobuf",
     "pugixml",
     "spdlog",
+    "curl",
+    "jsoncpp",
+    "protobuf",
+    "parallel-hashmap",
+    "magic-enum",
     "zlib",
+    "mio",
+    {
+      "name": "luajit",
+      "platform": "!arm"
+    },
     {
       "name": "libmariadb",
-      "features": ["mariadbclient"]
+      "features": [ "mariadbclient" ]
     },
     {
       "name": "gmp",
@@ -36,5 +29,5 @@
       "platform": "windows"
     }
   ],
-  "builtin-baseline": "98a562a04cd03728f399e79e1b37bcccb5a69b37"
+  "builtin-baseline":"69efe9cc2df0015f0bb2d37d55acde4a75c9a25b"
 }

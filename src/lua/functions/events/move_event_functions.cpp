@@ -9,21 +9,25 @@
 
 #include "pch.hpp"
 
-#include "creatures/creature.hpp"
-#include "lua/creature/movement.hpp"
+#include "creatures/creature.h"
+#include "lua/creature/movement.h"
 #include "lua/functions/events/move_event_functions.hpp"
 
 int MoveEventFunctions::luaCreateMoveEvent(lua_State* L) {
 	// MoveEvent()
-	const auto moveevent = std::make_shared<MoveEvent>(getScriptEnv()->getScriptInterface());
-	pushUserdata<MoveEvent>(L, moveevent);
-	setMetatable(L, -1, "MoveEvent");
+	MoveEvent* moveevent = new MoveEvent(getScriptEnv()->getScriptInterface());
+	if (moveevent) {
+		pushUserdata<MoveEvent>(L, moveevent);
+		setMetatable(L, -1, "MoveEvent");
+	} else {
+		lua_pushnil(L);
+	}
 	return 1;
 }
 
 int MoveEventFunctions::luaMoveEventType(lua_State* L) {
 	// moveevent:type(callback)
-	const auto moveevent = getUserdataShared<MoveEvent>(L, 1);
+	MoveEvent* moveevent = getUserdata<MoveEvent>(L, 1);
 	if (moveevent) {
 		std::string typeName = getString(L, 2);
 		std::string tmpStr = asLowerCaseString(typeName);
@@ -46,9 +50,9 @@ int MoveEventFunctions::luaMoveEventType(lua_State* L) {
 			moveevent->setEventType(MOVE_EVENT_REMOVE_ITEM);
 			moveevent->moveFunction = moveevent->RemoveItemField;
 		} else {
-			g_logger().error("[MoveEventFunctions::luaMoveEventType] - "
-							 "No valid event name: {}",
-							 typeName);
+			SPDLOG_ERROR("[MoveEventFunctions::luaMoveEventType] - "
+						 "No valid event name: {}",
+						 typeName);
 			pushBoolean(L, false);
 		}
 		pushBoolean(L, true);
@@ -60,16 +64,16 @@ int MoveEventFunctions::luaMoveEventType(lua_State* L) {
 
 int MoveEventFunctions::luaMoveEventRegister(lua_State* L) {
 	// moveevent:register()
-	const auto moveevent = getUserdataShared<MoveEvent>(L, 1);
+	MoveEvent* moveevent = getUserdata<MoveEvent>(L, 1);
 	if (moveevent) {
 		// If not scripted, register item event
 		// Example: unscripted_equipments.lua
 		if (!moveevent->isLoadedCallback()) {
-			pushBoolean(L, g_moveEvents().registerLuaItemEvent(moveevent));
+			pushBoolean(L, g_moveEvents().registerLuaItemEvent(*moveevent));
 			return 1;
 		}
 
-		pushBoolean(L, g_moveEvents().registerLuaEvent(moveevent));
+		pushBoolean(L, g_moveEvents().registerLuaEvent(*moveevent));
 	} else {
 		lua_pushnil(L);
 	}
@@ -78,7 +82,7 @@ int MoveEventFunctions::luaMoveEventRegister(lua_State* L) {
 
 int MoveEventFunctions::luaMoveEventOnCallback(lua_State* L) {
 	// moveevent:onEquip / deEquip / etc. (callback)
-	const auto moveevent = getUserdataShared<MoveEvent>(L, 1);
+	MoveEvent* moveevent = getUserdata<MoveEvent>(L, 1);
 	if (moveevent) {
 		if (!moveevent->loadCallback()) {
 			pushBoolean(L, false);
@@ -94,7 +98,7 @@ int MoveEventFunctions::luaMoveEventOnCallback(lua_State* L) {
 
 int MoveEventFunctions::luaMoveEventSlot(lua_State* L) {
 	// moveevent:slot(slot)
-	const auto moveevent = getUserdataShared<MoveEvent>(L, 1);
+	MoveEvent* moveevent = getUserdata<MoveEvent>(L, 1);
 	if (!moveevent) {
 		lua_pushnil(L);
 		return 1;
@@ -125,9 +129,9 @@ int MoveEventFunctions::luaMoveEventSlot(lua_State* L) {
 		} else if (slotName == "ammo") {
 			moveevent->setSlot(SLOTP_AMMO);
 		} else {
-			g_logger().warn("[MoveEventFunctions::luaMoveEventSlot] - "
-							"Unknown slot type: {}",
-							slotName);
+			SPDLOG_WARN("[MoveEventFunctions::luaMoveEventSlot] - "
+						"Unknown slot type: {}",
+						slotName);
 			pushBoolean(L, false);
 			return 1;
 		}
@@ -139,7 +143,7 @@ int MoveEventFunctions::luaMoveEventSlot(lua_State* L) {
 
 int MoveEventFunctions::luaMoveEventLevel(lua_State* L) {
 	// moveevent:level(lvl)
-	const auto moveevent = getUserdataShared<MoveEvent>(L, 1);
+	MoveEvent* moveevent = getUserdata<MoveEvent>(L, 1);
 	if (moveevent) {
 		moveevent->setRequiredLevel(getNumber<uint32_t>(L, 2));
 		moveevent->setWieldInfo(WIELDINFO_LEVEL);
@@ -152,7 +156,7 @@ int MoveEventFunctions::luaMoveEventLevel(lua_State* L) {
 
 int MoveEventFunctions::luaMoveEventMagLevel(lua_State* L) {
 	// moveevent:magicLevel(lvl)
-	const auto moveevent = getUserdataShared<MoveEvent>(L, 1);
+	MoveEvent* moveevent = getUserdata<MoveEvent>(L, 1);
 	if (moveevent) {
 		moveevent->setRequiredMagLevel(getNumber<uint32_t>(L, 2));
 		moveevent->setWieldInfo(WIELDINFO_MAGLV);
@@ -165,7 +169,7 @@ int MoveEventFunctions::luaMoveEventMagLevel(lua_State* L) {
 
 int MoveEventFunctions::luaMoveEventPremium(lua_State* L) {
 	// moveevent:premium(bool)
-	const auto moveevent = getUserdataShared<MoveEvent>(L, 1);
+	MoveEvent* moveevent = getUserdata<MoveEvent>(L, 1);
 	if (moveevent) {
 		moveevent->setNeedPremium(getBoolean(L, 2));
 		moveevent->setWieldInfo(WIELDINFO_PREMIUM);
@@ -178,7 +182,7 @@ int MoveEventFunctions::luaMoveEventPremium(lua_State* L) {
 
 int MoveEventFunctions::luaMoveEventVocation(lua_State* L) {
 	// moveevent:vocation(vocName[, showInDescription = false, lastVoc = false])
-	const auto moveevent = getUserdataShared<MoveEvent>(L, 1);
+	MoveEvent* moveevent = getUserdata<MoveEvent>(L, 1);
 	if (moveevent) {
 		moveevent->addVocEquipMap(getString(L, 2));
 		moveevent->setWieldInfo(WIELDINFO_VOCREQ);
@@ -217,7 +221,7 @@ int MoveEventFunctions::luaMoveEventVocation(lua_State* L) {
 
 int MoveEventFunctions::luaMoveEventItemId(lua_State* L) {
 	// moveevent:id(ids)
-	const auto moveevent = getUserdataShared<MoveEvent>(L, 1);
+	MoveEvent* moveevent = getUserdata<MoveEvent>(L, 1);
 	if (moveevent) {
 		int parameters = lua_gettop(L) - 1; // - 1 because self is a parameter aswell, which we want to skip ofc
 		if (parameters > 1) {
@@ -236,7 +240,7 @@ int MoveEventFunctions::luaMoveEventItemId(lua_State* L) {
 
 int MoveEventFunctions::luaMoveEventActionId(lua_State* L) {
 	// moveevent:aid(ids)
-	const auto moveevent = getUserdataShared<MoveEvent>(L, 1);
+	MoveEvent* moveevent = getUserdata<MoveEvent>(L, 1);
 	if (moveevent) {
 		int parameters = lua_gettop(L) - 1; // - 1 because self is a parameter aswell, which we want to skip ofc
 		if (parameters > 1) {
@@ -255,7 +259,7 @@ int MoveEventFunctions::luaMoveEventActionId(lua_State* L) {
 
 int MoveEventFunctions::luaMoveEventUniqueId(lua_State* L) {
 	// moveevent:uid(ids)
-	const auto moveevent = getUserdataShared<MoveEvent>(L, 1);
+	MoveEvent* moveevent = getUserdata<MoveEvent>(L, 1);
 	if (moveevent) {
 		int parameters = lua_gettop(L) - 1; // - 1 because self is a parameter aswell, which we want to skip ofc
 		if (parameters > 1) {
@@ -274,7 +278,7 @@ int MoveEventFunctions::luaMoveEventUniqueId(lua_State* L) {
 
 int MoveEventFunctions::luaMoveEventPosition(lua_State* L) {
 	// moveevent:position(positions)
-	const auto moveevent = getUserdataShared<MoveEvent>(L, 1);
+	MoveEvent* moveevent = getUserdata<MoveEvent>(L, 1);
 	if (moveevent) {
 		int parameters = lua_gettop(L) - 1; // - 1 because self is a parameter aswell, which we want to skip ofc
 		if (parameters > 1) {

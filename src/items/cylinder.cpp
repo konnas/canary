@@ -9,11 +9,11 @@
 
 #include "pch.hpp"
 
-#include "items/cylinder.hpp"
+#include "items/cylinder.h"
 
-std::shared_ptr<VirtualCylinder> VirtualCylinder::virtualCylinder = std::make_shared<VirtualCylinder>();
+VirtualCylinder* VirtualCylinder::virtualCylinder = new VirtualCylinder;
 
-int32_t Cylinder::getThingIndex(std::shared_ptr<Thing>) const {
+int32_t Cylinder::getThingIndex(const Thing*) const {
 	return -1;
 }
 
@@ -33,15 +33,15 @@ std::map<uint32_t, uint32_t> &Cylinder::getAllItemTypeCount(std::map<uint32_t, u
 	return countMap;
 }
 
-std::shared_ptr<Thing> Cylinder::getThing(size_t) const {
+Thing* Cylinder::getThing(size_t) const {
 	return nullptr;
 }
 
-void Cylinder::internalAddThing(std::shared_ptr<Thing>) {
+void Cylinder::internalAddThing(Thing*) {
 	//
 }
 
-void Cylinder::internalAddThing(uint32_t, std::shared_ptr<Thing>) {
+void Cylinder::internalAddThing(uint32_t, Thing*) {
 	//
 }
 

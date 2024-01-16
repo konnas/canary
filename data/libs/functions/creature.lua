@@ -7,14 +7,9 @@ function Creature.getClosestFreePosition(self, position, maxRadius, mustBeReacha
 	end
 
 	local checkPosition = Position(position)
-	local closestDistance = -1
-	local closestPosition = Position()
 	for radius = 0, maxRadius do
 		checkPosition.x = checkPosition.x - math.min(1, radius)
 		checkPosition.y = checkPosition.y + math.min(1, radius)
-		if closestDistance ~= -1 then
-			return closestPosition
-		end
 
 		local total = math.max(1, radius * 8)
 		for i = 1, total do
@@ -24,16 +19,13 @@ function Creature.getClosestFreePosition(self, position, maxRadius, mustBeReacha
 			end
 
 			local tile = Tile(checkPosition)
-			if tile and tile:getCreatureCount() == 0 and not tile:hasProperty(CONST_PROP_IMMOVABLEBLOCKSOLID) and (not mustBeReachable or self:getPathTo(checkPosition)) then
-				local distance = self:getPosition():getDistance(checkPosition)
-				if closestDistance == -1 or closestDistance > distance then
-					closestDistance = distance
-					closestPosition = Position(checkPosition)
-				end
+			if tile and tile:getCreatureCount() == 0 and not tile:hasProperty(CONST_PROP_IMMOVABLEBLOCKSOLID) and
+				(not mustBeReachable or self:getPathTo(checkPosition)) then
+				return checkPosition
 			end
 		end
 	end
-	return closestPosition
+	return Position()
 end
 
 function Creature.getMonster(self)
@@ -98,7 +90,7 @@ function Creature:setItemOutfit(item, time)
 
 	local condition = Condition(CONDITION_OUTFIT)
 	condition:setOutfit({
-		lookTypeEx = itemType:getId(),
+		lookTypeEx = itemType:getId()
 	})
 	condition:setTicks(time)
 	self:addCondition(condition)
@@ -200,37 +192,6 @@ function Creature.checkCreatureInsideDoor(player, toPosition)
 		end
 		creature:teleportTo(toPosition, true)
 	end
-end
-
-function Creature:canAccessPz()
-	if self:isMonster() or (self:isPlayer() and self:isPzLocked()) then
-		return false
-	end
-	return true
-end
-
-function Creature.getKillers(self, onlyPlayers)
-	local killers = {}
-	local inFightTicks = configManager.getNumber(configKeys.PZ_LOCKED)
-	local timeNow = os.mtime()
-	local getCreature = onlyPlayers and Player or Creature
-	for cid, cb in pairs(self:getDamageMap()) do
-		local creature = getCreature(cid)
-		if creature and creature ~= self and (timeNow - cb.ticks) <= inFightTicks then
-			killers[#killers + 1] = {
-				creature = creature,
-				damage = cb.total,
-			}
-		end
-	end
-
-	table.sort(killers, function(a, b)
-		return a.damage > b.damage
-	end)
-	for i, killer in pairs(killers) do
-		killers[i] = killer.creature
-	end
-	return killers
 end
 
 function Creature:addEventStamina(target)

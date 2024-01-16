@@ -7,23 +7,12 @@
  * Website: https://docs.opentibiabr.com/
  */
 
-#pragma once
+#ifndef SRC_PCH_HPP_
+#define SRC_PCH_HPP_
 
-// --------------------
-// Internal Includes
-// --------------------
-
-// Utils
-#include "utils/benchmark.hpp"
-#include "utils/definitions.hpp"
+// Definitions should be global.
+#include "utils/definitions.h"
 #include "utils/simd.hpp"
-#include "utils/vectorset.hpp"
-#include "utils/arraylist.hpp"
-#include "utils/vectorsort.hpp"
-
-// --------------------
-// STL Includes
-// --------------------
 
 #include <bitset>
 #include <charconv>
@@ -32,131 +21,54 @@
 #include <forward_list>
 #include <list>
 #include <map>
-#include <unordered_set>
-#include <queue>
 #include <random>
 #include <ranges>
 #include <regex>
 #include <set>
-#include <thread>
+#include <queue>
 #include <vector>
 #include <variant>
-#include <numeric>
-
-// --------------------
-// System Includes
-// --------------------
 
 #ifdef _WIN32
-	#include <io.h> // For _isatty() on Windows
+	#include <io.h> // Para _isatty() no Windows
 	#define isatty _isatty
 	#define STDIN_FILENO _fileno(stdin)
 #else
-	#include <unistd.h> // For isatty() on Linux and other POSIX systems
+	#include <unistd.h> // Para isatty() no Linux e outros sistemas POSIX
 #endif
 
 #ifdef OS_WINDOWS
-	#include <conio.h>
+	#include "conio.h"
 #endif
-
-// --------------------
-// Third Party Includes
-// --------------------
-
-// ABSL
-#include <absl/numeric/int128.h>
-
-// ARGON2
-#include <argon2.h>
-
-// ASIO
-#include <asio.hpp>
-
-// CURL
-#include <curl/curl.h>
-
-// FMT
-#include <fmt/chrono.h>
-#include <fmt/core.h>
-#include <fmt/format.h>
-#include <fmt/args.h>
-
-// GMP
-#include <gmp.h>
-
-// JSON
-#include <json/json.h>
-
-// LUA
-#if __has_include("luajit/lua.hpp")
-	#include <luajit/lua.hpp>
-#else
-	#include <lua.hpp>
-#endif
-
-#include "lua/global/shared_object.hpp"
-
-/**
- * @brief Magic Enum is a C++ library that facilitates easy conversion between enums and strings.
- * By default, the range of supported enum values is from -128 to 128. We need extends that range.
- *
- * @def MAGIC_ENUM_RANGE_MIN
- * @note Sets the lower limit of the enum value range to -500.
- *
- * @def MAGIC_ENUM_RANGE_MAX
- * @note Sets the upper limit of the enum value range to 500.
- */
-#define MAGIC_ENUM_RANGE_MIN -500
-#define MAGIC_ENUM_RANGE_MAX 500
-#include <magic_enum.hpp>
-
-// Memory Mapped File
-#include <mio/mmap.hpp>
-
-// MySQL
-#if __has_include("<mysql.h>")
-	#include <mysql.h>
-#else
-	#include <mysql/mysql.h>
-#endif
-
-#include <mysql/errmsg.h>
-
-// Parallel Hash Map
-#include <parallel_hashmap/phmap.h>
-#include <parallel_hashmap/btree.h>
-
-// PugiXML
-#include <pugixml.hpp>
-
-// Zlib
-#include <zlib.h>
-
-#include <boost/di.hpp>
-
-// -------------------------
-// GIT Metadata Includes
-// -------------------------
 
 #if __has_include("gitmetadata.h")
 	#include "gitmetadata.h"
 #endif
 
-// ---------------------
-// Standard STL Includes
-// ---------------------
+#include <asio.hpp>
+#include <curl/curl.h>
+#include <fmt/chrono.h>
+#include <gmp.h>
+#include <json/json.h>
+#if __has_include("luajit/lua.hpp")
+	#include <luajit/lua.hpp>
+#else
+	#include <lua.hpp>
+#endif
+#include <magic_enum.hpp>
+#include <mio/mmap.hpp>
+#if __has_include("<mysql.h>")
+	#include <mysql.h>
+#else
+	#include <mysql/mysql.h>
+#endif
+#include <mysql/errmsg.h>
+#include <spdlog/spdlog.h>
+#include <parallel_hashmap/phmap.h>
+#include <pugixml.hpp>
+#include <zlib.h>
 
 #include <string>
 #include <iostream>
 
-/**
- * Static custom libraries that can be pre-compiled like DI and messaging
- */
-#include "lib/messaging/message.hpp"
-#include "lib/messaging/command.hpp"
-#include "lib/messaging/event.hpp"
-
-#include <eventpp/utilities/scopedremover.h>
-#include <eventpp/eventdispatcher.h>
-
-#include "lua/global/shared_object.hpp"
+#endif // SRC_PCH_HPP_

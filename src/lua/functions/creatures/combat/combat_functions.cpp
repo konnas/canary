@@ -9,21 +9,21 @@
 
 #include "pch.hpp"
 
-#include "creatures/combat/combat.hpp"
-#include "game/game.hpp"
+#include "creatures/combat/combat.h"
+#include "game/game.h"
 #include "lua/functions/creatures/combat/combat_functions.hpp"
 #include "lua/scripts/lua_environment.hpp"
 
 int CombatFunctions::luaCombatCreate(lua_State* L) {
 	// Combat()
-	pushUserdata<Combat>(L, g_luaEnvironment().createCombatObject(getScriptEnv()->getScriptInterface()));
+	pushUserdata<Combat>(L, g_luaEnvironment.createCombatObject(getScriptEnv()->getScriptInterface()).get());
 	setMetatable(L, -1, "Combat");
 	return 1;
 }
 
 int CombatFunctions::luaCombatSetParameter(lua_State* L) {
 	// combat:setParameter(key, value)
-	const auto &combat = getUserdataShared<Combat>(L, 1);
+	Combat* combat = getUserdata<Combat>(L, 1);
 	if (!combat) {
 		lua_pushnil(L);
 		return 1;
@@ -43,7 +43,7 @@ int CombatFunctions::luaCombatSetParameter(lua_State* L) {
 
 int CombatFunctions::luaCombatSetFormula(lua_State* L) {
 	// combat:setFormula(type, mina, minb, maxa, maxb)
-	const auto &combat = getUserdataShared<Combat>(L, 1);
+	Combat* combat = getUserdata<Combat>(L, 1);
 	if (!combat) {
 		lua_pushnil(L);
 		return 1;
@@ -67,17 +67,16 @@ int CombatFunctions::luaCombatSetArea(lua_State* L) {
 		return 1;
 	}
 
-	const std::unique_ptr<AreaCombat> &area = g_luaEnvironment().getAreaObject(getNumber<uint32_t>(L, 2));
+	const AreaCombat* area = g_luaEnvironment.getAreaObject(getNumber<uint32_t>(L, 2));
 	if (!area) {
 		reportErrorFunc(getErrorDesc(LUA_ERROR_AREA_NOT_FOUND));
 		lua_pushnil(L);
 		return 1;
 	}
 
-	const auto &combat = getUserdataShared<Combat>(L, 1);
+	Combat* combat = getUserdata<Combat>(L, 1);
 	if (combat) {
-		auto areaClone = area->clone();
-		combat->setArea(areaClone);
+		combat->setArea(new AreaCombat(*area));
 		pushBoolean(L, true);
 	} else {
 		lua_pushnil(L);
@@ -87,7 +86,7 @@ int CombatFunctions::luaCombatSetArea(lua_State* L) {
 
 int CombatFunctions::luaCombatSetCondition(lua_State* L) {
 	// combat:addCondition(condition)
-	std::shared_ptr<Condition> condition = getUserdataShared<Condition>(L, 2);
+	Condition* condition = getUserdata<Condition>(L, 2);
 	Combat* combat = getUserdata<Combat>(L, 1);
 	if (combat && condition) {
 		combat->addCondition(condition->clone());
@@ -100,7 +99,7 @@ int CombatFunctions::luaCombatSetCondition(lua_State* L) {
 
 int CombatFunctions::luaCombatSetCallback(lua_State* L) {
 	// combat:setCallback(key, function)
-	const auto &combat = getUserdataShared<Combat>(L, 1);
+	Combat* combat = getUserdata<Combat>(L, 1);
 	if (!combat) {
 		lua_pushnil(L);
 		return 1;
@@ -125,7 +124,7 @@ int CombatFunctions::luaCombatSetCallback(lua_State* L) {
 
 int CombatFunctions::luaCombatSetOrigin(lua_State* L) {
 	// combat:setOrigin(origin)
-	const auto &combat = getUserdataShared<Combat>(L, 1);
+	Combat* combat = getUserdata<Combat>(L, 1);
 	if (combat) {
 		combat->setOrigin(getNumber<CombatOrigin>(L, 2));
 		pushBoolean(L, true);
@@ -137,29 +136,28 @@ int CombatFunctions::luaCombatSetOrigin(lua_State* L) {
 
 int CombatFunctions::luaCombatExecute(lua_State* L) {
 	// combat:execute(creature, variant)
-	const auto &combat = getUserdataShared<Combat>(L, 1);
+	Combat* combat = getUserdata<Combat>(L, 1);
 	if (!combat) {
 		pushBoolean(L, false);
 		return 1;
 	}
 
 	if (isUserdata(L, 2)) {
-		LuaData_t type = getUserdataType(L, 2);
-		if (type != LuaData_t::Player && type != LuaData_t::Monster && type != LuaData_t::Npc) {
+		LuaDataType type = getUserdataType(L, 2);
+		if (type != LuaData_Player && type != LuaData_Monster && type != LuaData_Npc) {
 			pushBoolean(L, false);
 			return 1;
 		}
 	}
 
-	std::shared_ptr<Creature> creature = getCreature(L, 2);
+	Creature* creature = getCreature(L, 2);
 
 	const LuaVariant &variant = getVariant(L, 3);
-	combat->setInstantSpellName(variant.instantName);
-	combat->setRuneSpellName(variant.runeName);
-	bool result = true;
+	combat->setSourceInstantSpellName(variant.instantName);
+	combat->setSourceRuneSpellName(variant.runeName);
 	switch (variant.type) {
 		case VARIANT_NUMBER: {
-			std::shared_ptr<Creature> target = g_game().getCreatureByID(variant.number);
+			Creature* target = g_game().getCreatureByID(variant.number);
 			if (!target) {
 				pushBoolean(L, false);
 				return 1;
@@ -174,28 +172,28 @@ int CombatFunctions::luaCombatExecute(lua_State* L) {
 		}
 
 		case VARIANT_POSITION: {
-			result = combat->doCombat(creature, variant.pos);
+			combat->doCombat(creature, variant.pos);
 			break;
 		}
 
 		case VARIANT_TARGETPOSITION: {
 			if (combat->hasArea()) {
-				result = combat->doCombat(creature, variant.pos);
+				combat->doCombat(creature, variant.pos);
 			} else {
-				combat->postCombatEffects(creature, creature->getPosition(), variant.pos);
+				combat->postCombatEffects(creature, variant.pos);
 				g_game().addMagicEffect(variant.pos, CONST_ME_POFF);
 			}
 			break;
 		}
 
 		case VARIANT_STRING: {
-			std::shared_ptr<Player> target = g_game().getPlayerByName(variant.text);
+			Player* target = g_game().getPlayerByName(variant.text);
 			if (!target) {
 				pushBoolean(L, false);
 				return 1;
 			}
 
-			result = combat->doCombat(creature, target);
+			combat->doCombat(creature, target);
 			break;
 		}
 
@@ -210,6 +208,6 @@ int CombatFunctions::luaCombatExecute(lua_State* L) {
 		}
 	}
 
-	pushBoolean(L, result);
+	pushBoolean(L, true);
 	return 1;
 }

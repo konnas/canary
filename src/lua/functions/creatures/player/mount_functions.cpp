@@ -9,13 +9,13 @@
 
 #include "pch.hpp"
 
-#include "creatures/appearance/mounts/mounts.hpp"
-#include "game/game.hpp"
+#include "creatures/appearance/mounts/mounts.h"
+#include "game/game.h"
 #include "lua/functions/creatures/player/mount_functions.hpp"
 
 int MountFunctions::luaCreateMount(lua_State* L) {
 	// Mount(id or name)
-	std::shared_ptr<Mount> mount;
+	Mount* mount;
 	if (isNumber(L, 2)) {
 		mount = g_game().mounts.getMountByID(getNumber<uint8_t>(L, 2));
 	} else if (isString(L, 2)) {
@@ -37,7 +37,7 @@ int MountFunctions::luaCreateMount(lua_State* L) {
 
 int MountFunctions::luaMountGetName(lua_State* L) {
 	// mount:getName()
-	const std::shared_ptr<Mount> mount = getUserdataShared<Mount>(L, 1);
+	Mount* mount = getUserdata<Mount>(L, 1);
 	if (mount) {
 		pushString(L, mount->name);
 	} else {
@@ -49,7 +49,7 @@ int MountFunctions::luaMountGetName(lua_State* L) {
 
 int MountFunctions::luaMountGetId(lua_State* L) {
 	// mount:getId()
-	const std::shared_ptr<Mount> mount = getUserdataShared<Mount>(L, 1);
+	Mount* mount = getUserdata<Mount>(L, 1);
 	if (mount) {
 		lua_pushnumber(L, mount->id);
 	} else {
@@ -61,7 +61,7 @@ int MountFunctions::luaMountGetId(lua_State* L) {
 
 int MountFunctions::luaMountGetClientId(lua_State* L) {
 	// mount:getClientId()
-	const std::shared_ptr<Mount> mount = getUserdataShared<Mount>(L, 1);
+	Mount* mount = getUserdata<Mount>(L, 1);
 	if (mount) {
 		lua_pushnumber(L, mount->clientId);
 	} else {
@@ -73,7 +73,7 @@ int MountFunctions::luaMountGetClientId(lua_State* L) {
 
 int MountFunctions::luaMountGetSpeed(lua_State* L) {
 	// mount:getSpeed()
-	const std::shared_ptr<Mount> mount = getUserdataShared<Mount>(L, 1);
+	Mount* mount = getUserdata<Mount>(L, 1);
 	if (mount) {
 		lua_pushnumber(L, mount->speed);
 	} else {

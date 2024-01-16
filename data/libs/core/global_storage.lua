@@ -8,7 +8,7 @@ Reserved player action storage key ranges (const.hpp)
 	[2001 - 2011]
 
 	Others reserved player action/storages
-	[100] = unmovable/untrade/unusable items
+	[100] = unmoveable/untrade/unusable items
 	[101] = use pick floor
 	[102] = well down action
 	[103-120] = others keys action
@@ -23,9 +23,16 @@ Reserved player action storage key ranges (const.hpp)
 
 Global = {
 	Storage = {
+		NpcExhaust = 30001,
+		combatProtectionStorage = 30023,
+		blockMovementStorage = 30025,
+		FamiliarSummon = 30026,
+		StoreExaust = 30051,
 		FamiliarSummonEvent10 = 30054,
 		FamiliarSummonEvent60 = 30055,
-	},
+		-- Can get up to +37 from this value (From ...01 to ...37) 40001/40037
+		WheelOfDestinySlotsPointsSelected = 40001
+	}
 }
 
 -- Values extraction function
@@ -48,8 +55,9 @@ table.sort(extraction) -- Sort the table
 -- Scroll through the extracted table for duplicates
 if #extraction > 1 then
 	for i = 1, #extraction - 1 do
-		if extraction[i] == extraction[i + 1] then
-			logger.warn("Duplicate global storage value found: {}", extraction[i])
+		if extraction[i] == extraction[i+1] then
+			Spdlog.warn(string.format("Duplicate global storage value found: %d",
+				extraction[i]))
 		end
 	end
 end

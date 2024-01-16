@@ -10,12 +10,13 @@
 #include "pch.hpp"
 
 #include "declarations.hpp"
-#include "creatures/combat/combat.hpp"
+#include "creatures/combat/combat.h"
+#include "creatures/creature.h"
 #include "lua/scripts/lua_environment.hpp"
-#include "creatures/combat/spells.hpp"
-#include "creatures/npcs/npcs.hpp"
-#include "lua/scripts/scripts.hpp"
-#include "game/game.hpp"
+#include "creatures/combat/spells.h"
+#include "creatures/npcs/npcs.h"
+#include "lua/scripts/scripts.h"
+#include "game/game.h"
 
 bool NpcType::canSpawn(const Position &pos) {
 	bool canSpawn = true;
@@ -32,7 +33,7 @@ bool NpcType::canSpawn(const Position &pos) {
 bool NpcType::loadCallback(LuaScriptInterface* scriptInterface) {
 	int32_t id = scriptInterface->getEvent();
 	if (id == -1) {
-		g_logger().warn("[NpcType::loadCallback] - Event not found");
+		SPDLOG_WARN("[NpcType::loadCallback] - Event not found");
 		return false;
 	}
 
@@ -72,7 +73,7 @@ bool NpcType::loadCallback(LuaScriptInterface* scriptInterface) {
 	return true;
 }
 
-void NpcType::loadShop(const std::shared_ptr<NpcType> &npcType, ShopBlock shopBlock) {
+void NpcType::loadShop(NpcType* npcType, ShopBlock shopBlock) {
 	ItemType &iType = Item::items.getItemType(shopBlock.itemId);
 
 	// Registering item prices globaly.
@@ -97,20 +98,21 @@ void NpcType::loadShop(const std::shared_ptr<NpcType> &npcType, ShopBlock shopBl
 				shopBlock.childShop.push_back(child);
 			}
 		}
+		npcType->info.shopItemVector.push_back(shopBlock);
+	} else {
+		npcType->info.shopItemVector.push_back(shopBlock);
 	}
-	npcType->info.shopItemVector.push_back(shopBlock);
 
 	info.speechBubble = SPEECHBUBBLE_TRADE;
 }
 
 bool Npcs::load(bool loadLibs /* = true*/, bool loadNpcs /* = true*/, bool reloading /* = false*/) const {
 	if (loadLibs) {
-		auto coreFolder = g_configManager().getString(CORE_DIRECTORY, __FUNCTION__);
-		return g_luaEnvironment().loadFile(coreFolder + "/npclib/load.lua", "load.lua") == 0;
+		auto coreFolder = g_configManager().getString(CORE_DIRECTORY);
+		return g_luaEnvironment.loadFile(coreFolder + "/npclib/load.lua", "load.lua") == 0;
 	}
 	if (loadNpcs) {
-		auto datapackFolder = g_configManager().getString(DATA_DIRECTORY, __FUNCTION__);
-		return g_scripts().loadScripts(datapackFolder + "/npc", false, reloading);
+		return g_scripts().loadScripts("npc", false, reloading);
 	}
 	return false;
 }
@@ -131,7 +133,7 @@ bool Npcs::reload() {
 	return false;
 }
 
-std::shared_ptr<NpcType> Npcs::getNpcType(const std::string &name, bool create /* = false*/) {
+NpcType* Npcs::getNpcType(const std::string &name, bool create /* = false*/) {
 	std::string key = asLowerCaseString(name);
 	auto it = npcs.find(key);
 
@@ -139,5 +141,11 @@ std::shared_ptr<NpcType> Npcs::getNpcType(const std::string &name, bool create /
 		return it->second;
 	}
 
-	return create ? npcs[key] = std::make_shared<NpcType>(name) : nullptr;
+	if (!create) {
+		return nullptr;
+	}
+
+	npcs[key] = new NpcType(name);
+
+	return npcs[key];
 }

@@ -9,21 +9,19 @@
 
 #include "pch.hpp"
 
-#include "creatures/interactions/chat.hpp"
-#include "game/game.hpp"
-#include "game/scheduling/dispatcher.hpp"
-#include "game/scheduling/save_manager.hpp"
+#include "creatures/interactions/chat.h"
+#include "game/game.h"
+#include "game/scheduling/scheduler.h"
 #include "lua/functions/core/game/global_functions.hpp"
 #include "lua/scripts/lua_environment.hpp"
 #include "lua/scripts/script_environment.hpp"
-#include "server/network/protocol/protocolstatus.hpp"
-#include "creatures/players/wheel/player_wheel.hpp"
+#include "server/network/protocol/protocolstatus.h"
 
 class Creature;
 int GlobalFunctions::luaDoPlayerAddItem(lua_State* L) {
 	// doPlayerAddItem(cid, itemid, <optional: default: 1> count/subtype, <optional: default: 1> canDropOnMap)
 	// doPlayerAddItem(cid, itemid, <optional: default: 1> count, <optional: default: 1> canDropOnMap, <optional: default: 1>subtype)
-	std::shared_ptr<Player> player = getPlayer(L, 1);
+	Player* player = getPlayer(L, 1);
 	if (!player) {
 		reportErrorFunc(getErrorDesc(LUA_ERROR_PLAYER_NOT_FOUND));
 		pushBoolean(L, false);
@@ -44,7 +42,7 @@ int GlobalFunctions::luaDoPlayerAddItem(lua_State* L) {
 		itemCount = std::max<int32_t>(1, count);
 	} else if (it.hasSubType()) {
 		if (it.stackable) {
-			itemCount = static_cast<int32_t>(std::ceil(static_cast<float>(count) / it.stackSize));
+			itemCount = static_cast<int32_t>(std::ceil(static_cast<float>(count) / 100));
 		} else {
 			itemCount = 1;
 		}
@@ -55,11 +53,11 @@ int GlobalFunctions::luaDoPlayerAddItem(lua_State* L) {
 
 	while (itemCount > 0) {
 		uint16_t stackCount = subType;
-		if (it.stackable && stackCount > it.stackSize) {
-			stackCount = it.stackSize;
+		if (it.stackable && stackCount > 100) {
+			stackCount = 100;
 		}
 
-		std::shared_ptr<Item> newItem = Item::CreateItem(itemId, stackCount);
+		Item* newItem = Item::CreateItem(itemId, stackCount);
 		if (!newItem) {
 			reportErrorFunc(getErrorDesc(LUA_ERROR_ITEM_NOT_FOUND));
 			pushBoolean(L, false);
@@ -72,6 +70,7 @@ int GlobalFunctions::luaDoPlayerAddItem(lua_State* L) {
 
 		ReturnValue ret = g_game().internalPlayerAddItem(player, newItem, canDropOnMap);
 		if (ret != RETURNVALUE_NOERROR) {
+			delete newItem;
 			pushBoolean(L, false);
 			return 1;
 		}
@@ -95,7 +94,7 @@ int GlobalFunctions::luaDoPlayerAddItem(lua_State* L) {
 
 int GlobalFunctions::luaDoSetCreatureLight(lua_State* L) {
 	// doSetCreatureLight(cid, lightLevel, lightColor, time)
-	std::shared_ptr<Creature> creature = getCreature(L, 1);
+	Creature* creature = getCreature(L, 1);
 	if (!creature) {
 		reportErrorFunc(getErrorDesc(LUA_ERROR_PLAYER_NOT_FOUND));
 		pushBoolean(L, false);
@@ -105,7 +104,7 @@ int GlobalFunctions::luaDoSetCreatureLight(lua_State* L) {
 	uint16_t level = getNumber<uint16_t>(L, 2);
 	uint16_t color = getNumber<uint16_t>(L, 3);
 	uint32_t time = getNumber<uint32_t>(L, 4);
-	std::shared_ptr<Condition> condition = Condition::createCondition(CONDITIONID_COMBAT, CONDITION_LIGHT, time, level | (color << 8));
+	Condition* condition = Condition::createCondition(CONDITIONID_COMBAT, CONDITION_LIGHT, time, level | (color << 8));
 	creature->addCondition(condition);
 	pushBoolean(L, true);
 	return 1;
@@ -119,15 +118,15 @@ int GlobalFunctions::luaIsValidUID(lua_State* L) {
 
 int GlobalFunctions::luaIsDepot(lua_State* L) {
 	// isDepot(uid)
-	std::shared_ptr<Container> container = getScriptEnv()->getContainerByUID(getNumber<uint32_t>(L, -1));
+	Container* container = getScriptEnv()->getContainerByUID(getNumber<uint32_t>(L, -1));
 	pushBoolean(L, container && container->getDepotLocker());
 	return 1;
 }
 
-int GlobalFunctions::luaIsMovable(lua_State* L) {
+int GlobalFunctions::luaIsMoveable(lua_State* L) {
+	// isMoveable(uid)
 	// isMovable(uid)
-	// isMovable(uid)
-	std::shared_ptr<Thing> thing = getScriptEnv()->getThingByUID(getNumber<uint32_t>(L, -1));
+	Thing* thing = getScriptEnv()->getThingByUID(getNumber<uint32_t>(L, -1));
 	pushBoolean(L, thing && thing->isPushable());
 	return 1;
 }
@@ -137,7 +136,7 @@ int GlobalFunctions::luaDoAddContainerItem(lua_State* L) {
 	uint32_t uid = getNumber<uint32_t>(L, 1);
 
 	ScriptEnvironment* env = getScriptEnv();
-	std::shared_ptr<Container> container = env->getContainerByUID(uid);
+	Container* container = env->getContainerByUID(uid);
 	if (!container) {
 		reportErrorFunc(getErrorDesc(LUA_ERROR_CONTAINER_NOT_FOUND));
 		pushBoolean(L, false);
@@ -153,7 +152,7 @@ int GlobalFunctions::luaDoAddContainerItem(lua_State* L) {
 
 	if (it.hasSubType()) {
 		if (it.stackable) {
-			itemCount = static_cast<int32_t>(std::ceil(static_cast<float>(count) / it.stackSize));
+			itemCount = static_cast<int32_t>(std::ceil(static_cast<float>(count) / 100));
 		}
 
 		subType = count;
@@ -162,8 +161,8 @@ int GlobalFunctions::luaDoAddContainerItem(lua_State* L) {
 	}
 
 	while (itemCount > 0) {
-		int32_t stackCount = std::min<int32_t>(it.stackSize, subType);
-		std::shared_ptr<Item> newItem = Item::CreateItem(itemId, stackCount);
+		int32_t stackCount = std::min<int32_t>(100, subType);
+		Item* newItem = Item::CreateItem(itemId, stackCount);
 		if (!newItem) {
 			reportErrorFunc(getErrorDesc(LUA_ERROR_ITEM_NOT_FOUND));
 			pushBoolean(L, false);
@@ -176,6 +175,7 @@ int GlobalFunctions::luaDoAddContainerItem(lua_State* L) {
 
 		ReturnValue ret = g_game().internalAddItem(container, newItem);
 		if (ret != RETURNVALUE_NOERROR) {
+			delete newItem;
 			pushBoolean(L, false);
 			return 1;
 		}
@@ -199,14 +199,14 @@ int GlobalFunctions::luaGetDepotId(lua_State* L) {
 	// getDepotId(uid)
 	uint32_t uid = getNumber<uint32_t>(L, -1);
 
-	std::shared_ptr<Container> container = getScriptEnv()->getContainerByUID(uid);
+	Container* container = getScriptEnv()->getContainerByUID(uid);
 	if (!container) {
 		reportErrorFunc(getErrorDesc(LUA_ERROR_CONTAINER_NOT_FOUND));
 		pushBoolean(L, false);
 		return 1;
 	}
 
-	std::shared_ptr<DepotLocker> depotLocker = container->getDepotLocker();
+	DepotLocker* depotLocker = container->getDepotLocker();
 	if (!depotLocker) {
 		reportErrorFunc("Depot not found");
 		pushBoolean(L, false);
@@ -248,8 +248,8 @@ int GlobalFunctions::luaCreateCombatArea(lua_State* L) {
 		return 1;
 	}
 
-	uint32_t areaId = g_luaEnvironment().createAreaObject(env->getScriptInterface());
-	const auto &area = g_luaEnvironment().getAreaObject(areaId);
+	uint32_t areaId = g_luaEnvironment.createAreaObject(env->getScriptInterface());
+	AreaCombat* area = g_luaEnvironment.getAreaObject(areaId);
 
 	int parameters = lua_gettop(L);
 	if (parameters >= 2) {
@@ -278,7 +278,7 @@ int GlobalFunctions::luaCreateCombatArea(lua_State* L) {
 
 int GlobalFunctions::luaDoAreaCombatHealth(lua_State* L) {
 	// doAreaCombatHealth(cid, type, pos, area, min, max, effect[, origin = ORIGIN_SPELL])
-	std::shared_ptr<Creature> creature = getCreature(L, 1);
+	Creature* creature = getCreature(L, 1);
 	if (!creature && (!isNumber(L, 1) || getNumber<uint32_t>(L, 1) != 0)) {
 		reportErrorFunc(getErrorDesc(LUA_ERROR_CREATURE_NOT_FOUND));
 		pushBoolean(L, false);
@@ -286,13 +286,13 @@ int GlobalFunctions::luaDoAreaCombatHealth(lua_State* L) {
 	}
 
 	uint32_t areaId = getNumber<uint32_t>(L, 4);
-	const auto &area = g_luaEnvironment().getAreaObject(areaId);
+	const AreaCombat* area = g_luaEnvironment.getAreaObject(areaId);
 	if (area || areaId == 0) {
 		CombatType_t combatType = getNumber<CombatType_t>(L, 2);
 
 		CombatParams params;
 		params.combatType = combatType;
-		params.impactEffect = getNumber<uint16_t>(L, 7);
+		params.impactEffect = getNumber<uint8_t>(L, 7);
 
 		CombatDamage damage;
 		damage.origin = getNumber<CombatOrigin>(L, 8, ORIGIN_SPELL);
@@ -303,7 +303,7 @@ int GlobalFunctions::luaDoAreaCombatHealth(lua_State* L) {
 		damage.runeSpellName = getString(L, 10);
 		if (creature) {
 			if (auto player = creature->getPlayer()) {
-				player->wheel()->getCombatDataSpell(damage);
+				player->getWheelOfDestinyCombatDataSpell(damage, nullptr);
 			}
 		}
 
@@ -318,14 +318,14 @@ int GlobalFunctions::luaDoAreaCombatHealth(lua_State* L) {
 
 int GlobalFunctions::luaDoTargetCombatHealth(lua_State* L) {
 	// doTargetCombatHealth(cid, target, type, min, max, effect[, origin = ORIGIN_SPELL])
-	std::shared_ptr<Creature> creature = getCreature(L, 1);
+	Creature* creature = getCreature(L, 1);
 	if (!creature && (!isNumber(L, 1) || getNumber<uint32_t>(L, 1) != 0)) {
 		reportErrorFunc(getErrorDesc(LUA_ERROR_CREATURE_NOT_FOUND));
 		pushBoolean(L, false);
 		return 1;
 	}
 
-	std::shared_ptr<Creature> target = getCreature(L, 2);
+	Creature* target = getCreature(L, 2);
 	if (!target) {
 		reportErrorFunc(getErrorDesc(LUA_ERROR_CREATURE_NOT_FOUND));
 		pushBoolean(L, false);
@@ -336,7 +336,7 @@ int GlobalFunctions::luaDoTargetCombatHealth(lua_State* L) {
 
 	CombatParams params;
 	params.combatType = combatType;
-	params.impactEffect = getNumber<uint16_t>(L, 6);
+	params.impactEffect = getNumber<uint8_t>(L, 6);
 
 	CombatDamage damage;
 	damage.origin = getNumber<CombatOrigin>(L, 7, ORIGIN_SPELL);
@@ -347,7 +347,7 @@ int GlobalFunctions::luaDoTargetCombatHealth(lua_State* L) {
 	damage.runeSpellName = getString(L, 10);
 	if (creature) {
 		if (auto player = creature->getPlayer()) {
-			player->wheel()->getCombatDataSpell(damage);
+			player->getWheelOfDestinyCombatDataSpell(damage, target);
 		}
 	}
 
@@ -363,7 +363,7 @@ int GlobalFunctions::luaDoTargetCombatHealth(lua_State* L) {
 
 int GlobalFunctions::luaDoAreaCombatMana(lua_State* L) {
 	// doAreaCombatMana(cid, pos, area, min, max, effect[, origin = ORIGIN_SPELL])
-	std::shared_ptr<Creature> creature = getCreature(L, 1);
+	Creature* creature = getCreature(L, 1);
 	if (!creature && (!isNumber(L, 1) || getNumber<uint32_t>(L, 1) != 0)) {
 		reportErrorFunc(getErrorDesc(LUA_ERROR_CREATURE_NOT_FOUND));
 		pushBoolean(L, false);
@@ -371,10 +371,10 @@ int GlobalFunctions::luaDoAreaCombatMana(lua_State* L) {
 	}
 
 	uint32_t areaId = getNumber<uint32_t>(L, 3);
-	const auto &area = g_luaEnvironment().getAreaObject(areaId);
+	const AreaCombat* area = g_luaEnvironment.getAreaObject(areaId);
 	if (area || areaId == 0) {
 		CombatParams params;
-		params.impactEffect = getNumber<uint16_t>(L, 6);
+		params.impactEffect = getNumber<uint8_t>(L, 6);
 
 		CombatDamage damage;
 		damage.origin = getNumber<CombatOrigin>(L, 7, ORIGIN_SPELL);
@@ -385,7 +385,7 @@ int GlobalFunctions::luaDoAreaCombatMana(lua_State* L) {
 		damage.runeSpellName = getString(L, 9);
 		if (creature) {
 			if (auto player = creature->getPlayer()) {
-				player->wheel()->getCombatDataSpell(damage);
+				player->getWheelOfDestinyCombatDataSpell(damage, nullptr);
 			}
 		}
 
@@ -401,14 +401,14 @@ int GlobalFunctions::luaDoAreaCombatMana(lua_State* L) {
 
 int GlobalFunctions::luaDoTargetCombatMana(lua_State* L) {
 	// doTargetCombatMana(cid, target, min, max, effect[, origin = ORIGIN_SPELL)
-	std::shared_ptr<Creature> creature = getCreature(L, 1);
+	Creature* creature = getCreature(L, 1);
 	if (!creature && (!isNumber(L, 1) || getNumber<uint32_t>(L, 1) != 0)) {
 		reportErrorFunc(getErrorDesc(LUA_ERROR_CREATURE_NOT_FOUND));
 		pushBoolean(L, false);
 		return 1;
 	}
 
-	std::shared_ptr<Creature> target = getCreature(L, 2);
+	Creature* target = getCreature(L, 2);
 	if (!target) {
 		reportErrorFunc(getErrorDesc(LUA_ERROR_CREATURE_NOT_FOUND));
 		pushBoolean(L, false);
@@ -416,21 +416,18 @@ int GlobalFunctions::luaDoTargetCombatMana(lua_State* L) {
 	}
 
 	CombatParams params;
-	auto minval = getNumber<int32_t>(L, 3);
-	auto maxval = getNumber<int32_t>(L, 4);
-	params.aggressive = minval + maxval < 0;
-	params.impactEffect = getNumber<uint16_t>(L, 5);
+	params.impactEffect = getNumber<uint8_t>(L, 5);
 
 	CombatDamage damage;
 	damage.origin = getNumber<CombatOrigin>(L, 6, ORIGIN_SPELL);
 	damage.primary.type = COMBAT_MANADRAIN;
-	damage.primary.value = normal_random(minval, maxval);
+	damage.primary.value = normal_random(getNumber<int32_t>(L, 3), getNumber<int32_t>(L, 4));
 
 	damage.instantSpellName = getString(L, 7);
 	damage.runeSpellName = getString(L, 8);
 	if (creature) {
 		if (auto player = creature->getPlayer()) {
-			player->wheel()->getCombatDataSpell(damage);
+			player->getWheelOfDestinyCombatDataSpell(damage, target);
 		}
 	}
 
@@ -441,14 +438,14 @@ int GlobalFunctions::luaDoTargetCombatMana(lua_State* L) {
 
 int GlobalFunctions::luaDoAreaCombatCondition(lua_State* L) {
 	// doAreaCombatCondition(cid, pos, area, condition, effect)
-	std::shared_ptr<Creature> creature = getCreature(L, 1);
+	Creature* creature = getCreature(L, 1);
 	if (!creature && (!isNumber(L, 1) || getNumber<uint32_t>(L, 1) != 0)) {
 		reportErrorFunc(getErrorDesc(LUA_ERROR_CREATURE_NOT_FOUND));
 		pushBoolean(L, false);
 		return 1;
 	}
 
-	const std::shared_ptr<Condition> condition = getUserdataShared<Condition>(L, 4);
+	const Condition* condition = getUserdata<Condition>(L, 4);
 	if (!condition) {
 		reportErrorFunc(getErrorDesc(LUA_ERROR_CONDITION_NOT_FOUND));
 		pushBoolean(L, false);
@@ -456,10 +453,10 @@ int GlobalFunctions::luaDoAreaCombatCondition(lua_State* L) {
 	}
 
 	uint32_t areaId = getNumber<uint32_t>(L, 3);
-	const auto &area = g_luaEnvironment().getAreaObject(areaId);
+	const AreaCombat* area = g_luaEnvironment.getAreaObject(areaId);
 	if (area || areaId == 0) {
 		CombatParams params;
-		params.impactEffect = getNumber<uint16_t>(L, 5);
+		params.impactEffect = getNumber<uint8_t>(L, 5);
 		params.conditionList.emplace_front(condition);
 		Combat::doCombatCondition(creature, getPosition(L, 2), area, params);
 		pushBoolean(L, true);
@@ -472,21 +469,21 @@ int GlobalFunctions::luaDoAreaCombatCondition(lua_State* L) {
 
 int GlobalFunctions::luaDoTargetCombatCondition(lua_State* L) {
 	// doTargetCombatCondition(cid, target, condition, effect)
-	std::shared_ptr<Creature> creature = getCreature(L, 1);
+	Creature* creature = getCreature(L, 1);
 	if (!creature && (!isNumber(L, 1) || getNumber<uint32_t>(L, 1) != 0)) {
 		reportErrorFunc(getErrorDesc(LUA_ERROR_CREATURE_NOT_FOUND));
 		pushBoolean(L, false);
 		return 1;
 	}
 
-	std::shared_ptr<Creature> target = getCreature(L, 2);
+	Creature* target = getCreature(L, 2);
 	if (!target) {
 		reportErrorFunc(getErrorDesc(LUA_ERROR_CREATURE_NOT_FOUND));
 		pushBoolean(L, false);
 		return 1;
 	}
 
-	const std::shared_ptr<Condition> condition = getUserdataShared<Condition>(L, 3);
+	const Condition* condition = getUserdata<Condition>(L, 3);
 	if (!condition) {
 		reportErrorFunc(getErrorDesc(LUA_ERROR_CONDITION_NOT_FOUND));
 		pushBoolean(L, false);
@@ -494,7 +491,7 @@ int GlobalFunctions::luaDoTargetCombatCondition(lua_State* L) {
 	}
 
 	CombatParams params;
-	params.impactEffect = getNumber<uint16_t>(L, 4);
+	params.impactEffect = getNumber<uint8_t>(L, 4);
 	params.conditionList.emplace_front(condition->clone());
 	Combat::doCombatCondition(creature, target, params);
 	pushBoolean(L, true);
@@ -503,7 +500,7 @@ int GlobalFunctions::luaDoTargetCombatCondition(lua_State* L) {
 
 int GlobalFunctions::luaDoAreaCombatDispel(lua_State* L) {
 	// doAreaCombatDispel(cid, pos, area, type, effect)
-	std::shared_ptr<Creature> creature = getCreature(L, 1);
+	Creature* creature = getCreature(L, 1);
 	if (!creature && (!isNumber(L, 1) || getNumber<uint32_t>(L, 1) != 0)) {
 		reportErrorFunc(getErrorDesc(LUA_ERROR_CREATURE_NOT_FOUND));
 		pushBoolean(L, false);
@@ -511,10 +508,10 @@ int GlobalFunctions::luaDoAreaCombatDispel(lua_State* L) {
 	}
 
 	uint32_t areaId = getNumber<uint32_t>(L, 3);
-	const auto &area = g_luaEnvironment().getAreaObject(areaId);
+	const AreaCombat* area = g_luaEnvironment.getAreaObject(areaId);
 	if (area || areaId == 0) {
 		CombatParams params;
-		params.impactEffect = getNumber<uint16_t>(L, 5);
+		params.impactEffect = getNumber<uint8_t>(L, 5);
 		params.dispelType = getNumber<ConditionType_t>(L, 4);
 		Combat::doCombatDispel(creature, getPosition(L, 2), area, params);
 
@@ -528,14 +525,14 @@ int GlobalFunctions::luaDoAreaCombatDispel(lua_State* L) {
 
 int GlobalFunctions::luaDoTargetCombatDispel(lua_State* L) {
 	// doTargetCombatDispel(cid, target, type, effect)
-	std::shared_ptr<Creature> creature = getCreature(L, 1);
+	Creature* creature = getCreature(L, 1);
 	if (!creature && (!isNumber(L, 1) || getNumber<uint32_t>(L, 1) != 0)) {
 		reportErrorFunc(getErrorDesc(LUA_ERROR_CREATURE_NOT_FOUND));
 		pushBoolean(L, false);
 		return 1;
 	}
 
-	std::shared_ptr<Creature> target = getCreature(L, 2);
+	Creature* target = getCreature(L, 2);
 	if (!target) {
 		reportErrorFunc(getErrorDesc(LUA_ERROR_CREATURE_NOT_FOUND));
 		pushBoolean(L, false);
@@ -544,39 +541,36 @@ int GlobalFunctions::luaDoTargetCombatDispel(lua_State* L) {
 
 	CombatParams params;
 	params.dispelType = getNumber<ConditionType_t>(L, 3);
-	params.impactEffect = getNumber<uint16_t>(L, 4);
+	params.impactEffect = getNumber<uint8_t>(L, 4);
 	Combat::doCombatDispel(creature, target, params);
 	pushBoolean(L, true);
 	return 1;
 }
 
 int GlobalFunctions::luaDoChallengeCreature(lua_State* L) {
-	// doChallengeCreature(cid, target, targetChangeCooldown)
-	std::shared_ptr<Creature> creature = getCreature(L, 1);
+	// doChallengeCreature(cid, target)
+	Creature* creature = getCreature(L, 1);
 	if (!creature) {
 		reportErrorFunc(getErrorDesc(LUA_ERROR_CREATURE_NOT_FOUND));
 		pushBoolean(L, false);
 		return 1;
 	}
 
-	std::shared_ptr<Creature> target = getCreature(L, 2);
+	Creature* target = getCreature(L, 2);
 	if (!target) {
 		reportErrorFunc(getErrorDesc(LUA_ERROR_CREATURE_NOT_FOUND));
 		pushBoolean(L, false);
 		return 1;
 	}
 
-	int targetChangeCooldown = getNumber<int32_t>(L, 3, 6000);
-	// This function must be defined to take and handle the targetChangeCooldown.
-	target->challengeCreature(creature, targetChangeCooldown);
-
+	target->challengeCreature(creature);
 	pushBoolean(L, true);
 	return 1;
 }
 
 int GlobalFunctions::luaAddEvent(lua_State* L) {
 	// addEvent(callback, delay, ...)
-	lua_State* globalState = g_luaEnvironment().getLuaState();
+	lua_State* globalState = g_luaEnvironment.getLuaState();
 	if (!globalState) {
 		reportErrorFunc("No valid script interface!");
 		pushBoolean(L, false);
@@ -592,23 +586,23 @@ int GlobalFunctions::luaAddEvent(lua_State* L) {
 		return 1;
 	}
 
-	if (g_configManager().getBoolean(WARN_UNSAFE_SCRIPTS, __FUNCTION__) || g_configManager().getBoolean(CONVERT_UNSAFE_SCRIPTS, __FUNCTION__)) {
-		std::vector<std::pair<int32_t, LuaData_t>> indexes;
+	if (g_configManager().getBoolean(WARN_UNSAFE_SCRIPTS) || g_configManager().getBoolean(CONVERT_UNSAFE_SCRIPTS)) {
+		std::vector<std::pair<int32_t, LuaDataType>> indexes;
 		for (int i = 3; i <= parameters; ++i) {
 			if (lua_getmetatable(globalState, i) == 0) {
 				continue;
 			}
 			lua_rawgeti(L, -1, 't');
 
-			LuaData_t type = getNumber<LuaData_t>(L, -1);
-			if (type != LuaData_t::Unknown && type <= LuaData_t::Npc) {
+			LuaDataType type = getNumber<LuaDataType>(L, -1);
+			if (type != LuaData_Unknown && type != LuaData_Tile) {
 				indexes.push_back({ i, type });
 			}
 			lua_pop(globalState, 2);
 		}
 
 		if (!indexes.empty()) {
-			if (g_configManager().getBoolean(WARN_UNSAFE_SCRIPTS, __FUNCTION__)) {
+			if (g_configManager().getBoolean(WARN_UNSAFE_SCRIPTS)) {
 				bool plural = indexes.size() > 1;
 
 				std::string warningString = "Argument";
@@ -637,19 +631,19 @@ int GlobalFunctions::luaAddEvent(lua_State* L) {
 				reportErrorFunc(warningString);
 			}
 
-			if (g_configManager().getBoolean(CONVERT_UNSAFE_SCRIPTS, __FUNCTION__)) {
+			if (g_configManager().getBoolean(CONVERT_UNSAFE_SCRIPTS)) {
 				for (const auto &entry : indexes) {
 					switch (entry.second) {
-						case LuaData_t::Item:
-						case LuaData_t::Container:
-						case LuaData_t::Teleport: {
+						case LuaData_Item:
+						case LuaData_Container:
+						case LuaData_Teleport: {
 							lua_getglobal(globalState, "Item");
 							lua_getfield(globalState, -1, "getUniqueId");
 							break;
 						}
-						case LuaData_t::Player:
-						case LuaData_t::Monster:
-						case LuaData_t::Npc: {
+						case LuaData_Player:
+						case LuaData_Monster:
+						case LuaData_Npc: {
 							lua_getglobal(globalState, "Creature");
 							lua_getfield(globalState, -1, "getId");
 							break;
@@ -676,23 +670,20 @@ int GlobalFunctions::luaAddEvent(lua_State* L) {
 
 	eventDesc.function = luaL_ref(globalState, LUA_REGISTRYINDEX);
 	eventDesc.scriptId = getScriptEnv()->getScriptId();
-	eventDesc.scriptName = getScriptEnv()->getScriptInterface()->getLoadingScriptName();
 
-	auto &lastTimerEventId = g_luaEnvironment().lastEventTimerId;
-	eventDesc.eventId = g_dispatcher().scheduleEvent(
-		delay,
-		std::bind(&LuaEnvironment::executeTimerEvent, &g_luaEnvironment(), lastTimerEventId),
-		"LuaEnvironment::executeTimerEvent"
-	);
+	auto &lastTimerEventId = g_luaEnvironment.lastEventTimerId;
+	eventDesc.eventId = g_scheduler().addEvent(createSchedulerTask(
+		delay, std::bind(&LuaEnvironment::executeTimerEvent, &g_luaEnvironment, lastTimerEventId)
+	));
 
-	g_luaEnvironment().timerEvents.emplace(lastTimerEventId, std::move(eventDesc));
+	g_luaEnvironment.timerEvents.emplace(lastTimerEventId, std::move(eventDesc));
 	lua_pushnumber(L, lastTimerEventId++);
 	return 1;
 }
 
 int GlobalFunctions::luaStopEvent(lua_State* L) {
 	// stopEvent(eventid)
-	lua_State* globalState = g_luaEnvironment().getLuaState();
+	lua_State* globalState = g_luaEnvironment.getLuaState();
 	if (!globalState) {
 		reportErrorFunc("No valid script interface!");
 		pushBoolean(L, false);
@@ -701,7 +692,7 @@ int GlobalFunctions::luaStopEvent(lua_State* L) {
 
 	uint32_t eventId = getNumber<uint32_t>(L, 1);
 
-	auto &timerEvents = g_luaEnvironment().timerEvents;
+	auto &timerEvents = g_luaEnvironment.timerEvents;
 	auto it = timerEvents.find(eventId);
 	if (it == timerEvents.end()) {
 		pushBoolean(L, false);
@@ -711,7 +702,7 @@ int GlobalFunctions::luaStopEvent(lua_State* L) {
 	LuaTimerEventDesc timerEventDesc = std::move(it->second);
 	timerEvents.erase(it);
 
-	g_dispatcher().stopEvent(timerEventDesc.eventId);
+	g_scheduler().stopEvent(timerEventDesc.eventId);
 	luaL_unref(globalState, LUA_REGISTRYINDEX, timerEventDesc.function);
 
 	for (auto parameter : timerEventDesc.parameters) {
@@ -723,13 +714,13 @@ int GlobalFunctions::luaStopEvent(lua_State* L) {
 }
 
 int GlobalFunctions::luaSaveServer(lua_State* L) {
-	g_saveManager().scheduleAll();
+	g_game().saveGameState();
 	pushBoolean(L, true);
 	return 1;
 }
 
 int GlobalFunctions::luaCleanMap(lua_State* L) {
-	lua_pushnumber(L, Map::clean());
+	lua_pushnumber(L, g_game().map.clean());
 	return 1;
 }
 
@@ -741,16 +732,16 @@ int GlobalFunctions::luaDebugPrint(lua_State* L) {
 
 int GlobalFunctions::luaIsInWar(lua_State* L) {
 	// isInWar(cid, target)
-	const auto &player = getPlayer(L, 1);
+	Player* player = getPlayer(L, 1);
 	if (!player) {
-		reportErrorFunc(fmt::format("{} - Player", getErrorDesc(LUA_ERROR_PLAYER_NOT_FOUND)));
+		reportErrorFunc(getErrorDesc(LUA_ERROR_PLAYER_NOT_FOUND));
 		pushBoolean(L, false);
 		return 1;
 	}
 
-	const auto &targetPlayer = getPlayer(L, 2);
+	Player* targetPlayer = getPlayer(L, 2);
 	if (!targetPlayer) {
-		reportErrorFunc(fmt::format("{} - TargetPlayer", getErrorDesc(LUA_ERROR_PLAYER_NOT_FOUND)));
+		reportErrorFunc(getErrorDesc(LUA_ERROR_PLAYER_NOT_FOUND));
 		pushBoolean(L, false);
 		return 1;
 	}
@@ -775,7 +766,7 @@ int GlobalFunctions::luaGetWaypointPositionByName(lua_State* L) {
 int GlobalFunctions::luaSendChannelMessage(lua_State* L) {
 	// sendChannelMessage(channelId, type, message)
 	uint16_t channelId = getNumber<uint16_t>(L, 1);
-	const auto &channel = g_chat().getChannelById(channelId);
+	const ChatChannel* channel = g_chat().getChannelById(channelId);
 	if (!channel) {
 		pushBoolean(L, false);
 		return 1;
@@ -791,7 +782,7 @@ int GlobalFunctions::luaSendChannelMessage(lua_State* L) {
 int GlobalFunctions::luaSendGuildChannelMessage(lua_State* L) {
 	// sendGuildChannelMessage(guildId, type, message)
 	uint32_t guildId = getNumber<uint32_t>(L, 1);
-	const auto &channel = g_chat().getGuildChannelById(guildId);
+	const ChatChannel* channel = g_chat().getGuildChannelById(guildId);
 	if (!channel) {
 		pushBoolean(L, false);
 		return 1;
@@ -844,20 +835,6 @@ int GlobalFunctions::luaCreateTable(lua_State* L) {
 int GlobalFunctions::luaSystemTime(lua_State* L) {
 	// systemTime()
 	lua_pushnumber(L, OTSYS_TIME());
-	return 1;
-}
-
-int GlobalFunctions::luaGetFormattedTimeRemaining(lua_State* L) {
-	// getFormattedTimeRemaining(time)
-	time_t time = getNumber<uint32_t>(L, 1);
-	lua_pushstring(L, getFormattedTimeRemaining(time).c_str());
-	return 1;
-}
-
-int GlobalFunctions::luaReportError(lua_State* L) {
-	// reportError(errorDescription)
-	auto errorDescription = getString(L, 1);
-	reportError(__func__, errorDescription, true);
 	return 1;
 }
 

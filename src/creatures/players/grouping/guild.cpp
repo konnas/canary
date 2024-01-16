@@ -9,26 +9,26 @@
 
 #include "pch.hpp"
 
-#include "creatures/players/grouping/guild.hpp"
-#include "game/game.hpp"
+#include "creatures/players/grouping/guild.h"
+#include "game/game.h"
 
-void Guild::addMember(const std::shared_ptr<Player> &player) {
+void Guild::addMember(Player* player) {
 	membersOnline.push_back(player);
-	for (auto member : getMembersOnline()) {
+	for (Player* member : membersOnline) {
 		g_game().updatePlayerHelpers(member);
 	}
 }
 
-void Guild::removeMember(const std::shared_ptr<Player> &player) {
-	// loop over to udpate all members and delete the player from the list
+void Guild::removeMember(Player* player) {
 	membersOnline.remove(player);
-	for (const auto &member : membersOnline) {
+	for (Player* member : membersOnline) {
 		g_game().updatePlayerHelpers(member);
 	}
 
 	g_game().updatePlayerHelpers(player);
 	if (membersOnline.empty()) {
 		g_game().removeGuild(id);
+		delete this;
 	}
 }
 

@@ -9,6 +9,11 @@ VOCATION = {
 		ELDER_DRUID = 6,
 		ROYAL_PALADIN = 7,
 		ELITE_KNIGHT = 8,
+		ESPADACHIM = 9,
+		BARBARO = 10,
+		PALADINO = 11,
+		CACADOR = 12,
+		MAGO = 13
 	},
 	CLIENT_ID = {
 		NONE = 0,
@@ -20,12 +25,22 @@ VOCATION = {
 		ROYAL_PALADIN = 12,
 		MASTER_SORCERER = 13,
 		ELDER_DRUID = 14,
+		ESPADACHIM = 0,
+		BARBARO = 0,
+		PALADINO = 0,
+		CACADOR = 0,
+		MAGO = 0
 	},
 	BASE_ID = {
-		NONE = 0,
-		SORCERER = 1,
-		DRUID = 2,
-		PALADIN = 3,
-		KNIGHT = 4,
-	},
+        NONE = 0,
+        SORCERER = 1,
+        DRUID = 2,
+        PALADIN = 3,
+        KNIGHT = 4,
+		ESPADACHIM = 5,
+		BARBARO = 6,
+		PALADINO = 7,
+		CACADOR = 8,
+		MAGO = 9
+    }
 }

@@ -9,16 +9,17 @@
 
 #include "pch.hpp"
 
-#include "game/game.hpp"
-#include "io/iobestiary.hpp"
+#include "game/game.h"
+#include "io/iobestiary.h"
 #include "lua/functions/creatures/monster/charm_functions.hpp"
 
 int CharmFunctions::luaCharmCreate(lua_State* L) {
 	// charm(id)
 	if (isNumber(L, 2)) {
 		charmRune_t charmid = getNumber<charmRune_t>(L, 2);
-		const auto charmList = g_game().getCharmList();
-		for (const auto charm : charmList) {
+		std::vector<Charm*> charmList = g_game().getCharmList();
+		for (auto &it : charmList) {
+			Charm* charm = it;
 			if (charm->id == charmid) {
 				pushUserdata<Charm>(L, charm);
 				setMetatable(L, -1, "Charm");
@@ -33,7 +34,7 @@ int CharmFunctions::luaCharmCreate(lua_State* L) {
 
 int CharmFunctions::luaCharmName(lua_State* L) {
 	// get: charm:name() set: charm:name(string)
-	const auto charm = getUserdataShared<Charm>(L, 1);
+	Charm* charm = getUserdata<Charm>(L, 1);
 	if (lua_gettop(L) == 1) {
 		pushString(L, charm->name);
 	} else {
@@ -45,7 +46,7 @@ int CharmFunctions::luaCharmName(lua_State* L) {
 
 int CharmFunctions::luaCharmDescription(lua_State* L) {
 	// get: charm:description() set: charm:description(string)
-	const auto charm = getUserdataShared<Charm>(L, 1);
+	Charm* charm = getUserdata<Charm>(L, 1);
 	if (lua_gettop(L) == 1) {
 		pushString(L, charm->description);
 	} else {
@@ -57,7 +58,7 @@ int CharmFunctions::luaCharmDescription(lua_State* L) {
 
 int CharmFunctions::luaCharmType(lua_State* L) {
 	// get: charm:type() set: charm:type(charm_t)
-	const auto charm = getUserdataShared<Charm>(L, 1);
+	Charm* charm = getUserdata<Charm>(L, 1);
 	if (lua_gettop(L) == 1) {
 		lua_pushnumber(L, charm->type);
 	} else {
@@ -69,7 +70,7 @@ int CharmFunctions::luaCharmType(lua_State* L) {
 
 int CharmFunctions::luaCharmPoints(lua_State* L) {
 	// get: charm:points() set: charm:points(value)
-	const auto charm = getUserdataShared<Charm>(L, 1);
+	Charm* charm = getUserdata<Charm>(L, 1);
 	if (lua_gettop(L) == 1) {
 		lua_pushnumber(L, charm->points);
 	} else {
@@ -81,7 +82,7 @@ int CharmFunctions::luaCharmPoints(lua_State* L) {
 
 int CharmFunctions::luaCharmDamageType(lua_State* L) {
 	// get: charm:damageType() set: charm:damageType(type)
-	const auto charm = getUserdataShared<Charm>(L, 1);
+	Charm* charm = getUserdata<Charm>(L, 1);
 	if (lua_gettop(L) == 1) {
 		lua_pushnumber(L, charm->dmgtype);
 	} else {
@@ -93,11 +94,11 @@ int CharmFunctions::luaCharmDamageType(lua_State* L) {
 
 int CharmFunctions::luaCharmPercentage(lua_State* L) {
 	// get: charm:percentage() set: charm:percentage(value)
-	const auto charm = getUserdataShared<Charm>(L, 1);
+	Charm* charm = getUserdata<Charm>(L, 1);
 	if (lua_gettop(L) == 1) {
 		lua_pushnumber(L, charm->percent);
 	} else {
-		charm->percent = getNumber<uint16_t>(L, 2);
+		charm->percent = getNumber<int8_t>(L, 2);
 		pushBoolean(L, true);
 	}
 	return 1;
@@ -105,7 +106,7 @@ int CharmFunctions::luaCharmPercentage(lua_State* L) {
 
 int CharmFunctions::luaCharmChance(lua_State* L) {
 	// get: charm:chance() set: charm:chance(value)
-	const auto charm = getUserdataShared<Charm>(L, 1);
+	Charm* charm = getUserdata<Charm>(L, 1);
 	if (lua_gettop(L) == 1) {
 		lua_pushnumber(L, charm->chance);
 	} else {
@@ -117,7 +118,7 @@ int CharmFunctions::luaCharmChance(lua_State* L) {
 
 int CharmFunctions::luaCharmMessageCancel(lua_State* L) {
 	// get: charm:messageCancel() set: charm:messageCancel(string)
-	const auto charm = getUserdataShared<Charm>(L, 1);
+	Charm* charm = getUserdata<Charm>(L, 1);
 	if (lua_gettop(L) == 1) {
 		pushString(L, charm->cancelMsg);
 	} else {
@@ -129,7 +130,7 @@ int CharmFunctions::luaCharmMessageCancel(lua_State* L) {
 
 int CharmFunctions::luaCharmMessageServerLog(lua_State* L) {
 	// get: charm:messageServerLog() set: charm:messageServerLog(string)
-	const auto charm = getUserdataShared<Charm>(L, 1);
+	Charm* charm = getUserdata<Charm>(L, 1);
 	if (lua_gettop(L) == 1) {
 		pushString(L, charm->logMsg);
 	} else {
@@ -141,11 +142,11 @@ int CharmFunctions::luaCharmMessageServerLog(lua_State* L) {
 
 int CharmFunctions::luaCharmEffect(lua_State* L) {
 	// get: charm:effect() set: charm:effect(value)
-	const auto charm = getUserdataShared<Charm>(L, 1);
+	Charm* charm = getUserdata<Charm>(L, 1);
 	if (lua_gettop(L) == 1) {
 		lua_pushnumber(L, charm->effect);
 	} else {
-		charm->effect = getNumber<uint16_t>(L, 2);
+		charm->effect = getNumber<uint8_t>(L, 2);
 		pushBoolean(L, true);
 	}
 	return 1;
@@ -153,7 +154,7 @@ int CharmFunctions::luaCharmEffect(lua_State* L) {
 
 int CharmFunctions::luaCharmCastSound(lua_State* L) {
 	// get: charm:castSound() set: charm:castSound(sound)
-	const auto charm = getUserdataShared<Charm>(L, 1);
+	Charm* charm = getUserdata<Charm>(L, 1);
 	if (lua_gettop(L) == 1) {
 		lua_pushnumber(L, static_cast<lua_Number>(charm->soundCastEffect));
 	} else {
@@ -165,7 +166,7 @@ int CharmFunctions::luaCharmCastSound(lua_State* L) {
 
 int CharmFunctions::luaCharmImpactSound(lua_State* L) {
 	// get: charm:impactSound() set: charm:impactSound(sound)
-	const auto charm = getUserdataShared<Charm>(L, 1);
+	Charm* charm = getUserdata<Charm>(L, 1);
 	if (lua_gettop(L) == 1) {
 		lua_pushnumber(L, static_cast<lua_Number>(charm->soundImpactEffect));
 	} else {

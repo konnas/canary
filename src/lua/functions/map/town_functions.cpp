@@ -9,13 +9,13 @@
 
 #include "pch.hpp"
 
-#include "game/game.hpp"
+#include "game/game.h"
 #include "lua/functions/map/town_functions.hpp"
-#include "map/town.hpp"
+#include "map/town.h"
 
 int TownFunctions::luaTownCreate(lua_State* L) {
 	// Town(id or name)
-	std::shared_ptr<Town> town;
+	Town* town;
 	if (isNumber(L, 2)) {
 		town = g_game().map.towns.getTown(getNumber<uint32_t>(L, 2));
 	} else if (isString(L, 2)) {
@@ -35,7 +35,8 @@ int TownFunctions::luaTownCreate(lua_State* L) {
 
 int TownFunctions::luaTownGetId(lua_State* L) {
 	// town:getId()
-	if (const auto &town = getUserdataShared<Town>(L, 1)) {
+	Town* town = getUserdata<Town>(L, 1);
+	if (town) {
 		lua_pushnumber(L, town->getID());
 	} else {
 		lua_pushnil(L);
@@ -45,7 +46,8 @@ int TownFunctions::luaTownGetId(lua_State* L) {
 
 int TownFunctions::luaTownGetName(lua_State* L) {
 	// town:getName()
-	if (const auto &town = getUserdataShared<Town>(L, 1)) {
+	Town* town = getUserdata<Town>(L, 1);
+	if (town) {
 		pushString(L, town->getName());
 	} else {
 		lua_pushnil(L);
@@ -55,7 +57,8 @@ int TownFunctions::luaTownGetName(lua_State* L) {
 
 int TownFunctions::luaTownGetTemplePosition(lua_State* L) {
 	// town:getTemplePosition()
-	if (const auto &town = getUserdataShared<Town>(L, 1)) {
+	Town* town = getUserdata<Town>(L, 1);
+	if (town) {
 		pushPosition(L, town->getTemplePosition());
 	} else {
 		lua_pushnil(L);

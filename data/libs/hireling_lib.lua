@@ -1,44 +1,75 @@
+HIRELING_CREDITS = {
+	Developer = 'Leonardo "Leu" Pereira (jlcvp)',
+	Version = "1.0-CoronaVaires",
+	Date = "29/04/2020"
+}
+
+local DEBUG = true -- print debug to console
+
+HIRELING_CACHE_STORAGE = {}
 HIRELINGS = {}
 PLAYER_HIRELINGS = {}
 HIRELING_OUTFIT_CHANGING = {}
 
--- This is for server registration only, high ids to avoid conflicting with the gamestore subaction
-HIRELING_SKILLS = {
-	BANKER = { 1001, "banker" },
-	COOKING = { 1002, "cooker" },
-	STEWARD = { 1003, "steward" },
-	TRADER = { 1004, "trader" },
-}
+function DebugPrint(str)
+	if DEBUG == true then
+		Spdlog.debug(str)
+	end
+end
 
-HIRELING_OUTFITS = {
-	BANKER = { 2001, "banker" },
-	COOKING = { 2002, "cooker" },
-	STEWARD = { 2003, "steward" },
-	TRADER = { 2004, "trader" },
-	SERVANT = { 2005, "servant" },
-	HYDRA = { 2006, "hydra" },
-	FERUMBRAS = { 2007, "ferumbras" },
-	BONELORD = { 2008, "bonelord" },
-	DRAGON = { 2009, "dragon" },
+function printTable(t)
+	local str = '{'
+
+		for k,v in pairs(t) do
+			str = str .. string.format( "\n %s = %s",tostring(k), tostring(v))
+		end
+	str = str.. '\n}'
+	Spdlog.debug(str)
+end
+
+-- [[ Constants and ENUMS ]]
+
+HIRELING_SKILLS = {
+	BANKER = 1, -- 1<<0
+	COOKING = 2, -- 1<<1
+	STEWARD = 4, -- 1<<2
+	TRADER = 8 -- 1<<3
 }
 
 HIRELING_SEX = {
 	FEMALE = 2,
-	MALE = 1,
+	MALE = 1
 }
 
 HIRELING_OUTFIT_DEFAULT = { name = "Citizen", female = 1107, male = 1108 }
 
+HIRELING_OUTFITS = {
+	BANKER = 1, -- 1<<0
+	COOKING = 2, -- 1<<1
+	STEWARD = 4, -- 1<<2
+	TRADER = 8, -- 1<<3 ...
+	SERVANT = 16,
+	HYDRA = 32,
+	FERUMBRAS = 64,
+	BONELORD = 128,
+	DRAGON = 256
+}
+
 HIRELING_OUTFITS_TABLE = {
-	BANKER = { name = "Banker Dress", female = 1109, male = 1110 },
-	BONELORD = { name = "Bonelord Dress", female = 1123, male = 1124 },
-	COOKING = { name = "Cook Dress", female = 1113, male = 1114 },
-	DRAGON = { name = "Dragon Dress", female = 1125, male = 1126 },
-	FERUMBRAS = { name = "Ferumbras Dress", female = 1131, male = 1132 },
-	HYDRA = { name = "Hydra Dress", female = 1129, male = 1130 },
-	SERVANT = { name = "Servant Dress", female = 1117, male = 1118 },
-	STEWARD = { name = "Stewart Dress", female = 1115, male = 1116 },
-	TRADER = { name = "Trader Dress", female = 1111, male = 1112 },
+	BANKER = {name = "Banker Dress", female = 1109, male = 1110},
+	BONELORD = {name = "Bonelord Dress", female = 1123, male = 1124},
+	COOKING = {name = "Cook Dress", female = 1113, male = 1114},
+	DRAGON = {name = "Dragon Dress", female = 1125, male = 1126},
+	FERUMBRAS = {name = "Ferumbras Dress", female = 1131, male = 1132},
+	HYDRA = {name = "Hydra Dress", female = 1129, male = 1130},
+	SERVANT = {name = "Servant Dress", female = 1117, male = 1118},
+	STEWARD = {name = "Stewart Dress", female = 1115, male = 1116},
+	TRADER = {name = "Trader Dress", female = 1111, male = 1112}
+}
+
+HIRELING_STORAGE = {
+	SKILL = 28800,
+	OUTFIT = 28900
 }
 
 HIRELING_FOODS_BOOST = {
@@ -48,26 +79,14 @@ HIRELING_FOODS_BOOST = {
 	DISTANCE = 35173,
 }
 
-HIRELING_FOODS_IDS = {
-	29412,
-	29413,
-	29414,
-	29415,
-	29416,
+HIRELING_FOODS = { -- only the non-skill ones
+	29412, 29413, 29414, 29415, 29416
 }
 
-local function printTable(t)
-	local str = "{"
-
-	for k, v in pairs(t) do
-		str = str .. string.format("\n %s = %s", tostring(k), tostring(v))
-	end
-	str = str .. "\n}"
-	logger.debug(str)
-end
+-- [[ LOCAL FUNCTIONS AND UTILS ]]
 
 local function checkHouseAccess(hireling)
-	-- Check if owner still have access to the house
+	--check if owner still have access to the house
 	if not hireling or hireling.active == 0 then
 		return false
 	end
@@ -76,7 +95,6 @@ local function checkHouseAccess(hireling)
 	if not tile then
 		return false
 	end
-
 	local house = tile:getHouse()
 	if not house then
 		return false
@@ -86,34 +104,26 @@ local function checkHouseAccess(hireling)
 		player = Game.getOfflinePlayer(hireling:getOwnerId())
 	end
 
-	if house:getOwnerGuid() == hireling:getOwnerId() then
-		return true
-	end
+	if house:getOwnerGuid() == hireling:getOwnerId() then return true end
 
-	-- Player is not invited anymore, return to lamp
-	logger.debug("Returning Hireling: {} to owner '{}' Inbox", hireling:getName(), player:getName())
+	-- player is not invited anymore, return to lamp
+	Spdlog.info("Returning Hireling:" .. hireling:getName() .. " to owner Inbox")
 	local inbox = player:getSlotItem(CONST_SLOT_STORE_INBOX)
-	if not inbox then
-		return false
-	end
-
 	-- Using FLAG_NOLIMIT to avoid losing the hireling after being kicked out of the house and having no slots available in the store inbox
 	local lamp = inbox:addItem(HIRELING_LAMP, 1, INDEX_WHEREEVER, FLAG_NOLIMIT)
-	if lamp then
-		lamp:setAttribute(ITEM_ATTRIBUTE_DESCRIPTION, "This mysterious lamp summons your very own personal hireling.\nThis item cannot be traded.\nThis magic lamp is the home of " .. hireling:getName() .. ".")
-		lamp:setCustomAttribute("Hireling", hireling:getId())
-	end
-
+	lamp:setAttribute(ITEM_ATTRIBUTE_DESCRIPTION, "This mysterious lamp summons your very own personal hireling.\nThis item cannot be traded.\nThis magic lamp is the home of " .. hireling:getName() .. ".")
+	lamp:setCustomAttribute("Hireling", hireling:getId()) --save hirelingId on item
 	player:save()
 	hireling.active = 0
 	hireling.cid = -1
-	hireling:setPosition({ x = 0, y = 0, z = 0 })
+	hireling:setPosition({x=0,y=0,z=0})
+
 end
 
 local function spawnNPCs()
-	logger.info("Spawning Hirelings")
+	Spdlog.info("Spawning Hirelings")
 	local hireling
-	for i = 1, #HIRELINGS do
+	for i=1,#HIRELINGS do
 		hireling = HIRELINGS[i]
 
 		if checkHouseAccess(hireling) then
@@ -122,10 +132,46 @@ local function spawnNPCs()
 	end
 end
 
+local function addStorageCacheValue(player_id, storage, value)
+	if not HIRELING_CACHE_STORAGE[player_id] then
+		HIRELING_CACHE_STORAGE[player_id] = {}
+	end
+	HIRELING_CACHE_STORAGE[player_id][storage] = value
+end
+
+local function initStorageCache()
+	local sql = string.format("SELECT `player_id`, `key`, `value` FROM `player_storage` "..
+	"WHERE `key` IN (%d,%d)", HIRELING_STORAGE.SKILL, HIRELING_STORAGE.OUTFIT)
+
+	local resultId = db.storeQuery(sql)
+	if resultId ~= false then
+		local player_id, key, value
+		repeat
+			player_id = Result.getNumber(resultId,"player_id")
+			key = Result.getNumber(resultId,"key")
+			value = Result.getNumber(resultId,"value")
+
+			addStorageCacheValue(player_id, key, value)
+		until not Result.next(resultId)
+		Result.free(resultId)
+	end
+end
+
+local function getStorageForPlayer(player_id, storage)
+	local player = Player(player_id)
+	if player then
+		return player:getStorageValue(storage)
+	else
+		return HIRELING_CACHE_STORAGE[player_id] and HIRELING_CACHE_STORAGE[player_id][storage] or -1
+	end
+end
+
+-- [[ DEFINING HIRELING CLASS ]]
+
 Hireling = {
 	id = -1,
 	player_id = -1,
-	name = "hireling",
+	name = 'hireling',
 	skills = 0,
 	active = 0,
 	sex = 0,
@@ -137,7 +183,7 @@ Hireling = {
 	lookhead = 97,
 	looklegs = 3,
 	looktype = 0,
-	cid = -1,
+	cid = -1
 }
 
 function Hireling:new(o)
@@ -160,18 +206,12 @@ function Hireling:getName()
 end
 
 function Hireling:canTalkTo(player)
-	if not player then
-		return false
-	end
+	if not player then return false end
 
 	local tile = Tile(player:getPosition())
-	if not tile then
-		return false
-	end
+	if not tile then return false end
 	local house = tile:getHouse()
-	if not house then
-		return false
-	end
+	if not house then return false end
 
 	local hirelingHouse = Tile(self:getPosition()):getHouse()
 
@@ -179,7 +219,7 @@ function Hireling:canTalkTo(player)
 end
 
 function Hireling:getPosition()
-	return Position(self.posx, self.posy, self.posz)
+	return Position(self.posx,self.posy, self.posz)
 end
 
 function Hireling:setPosition(pos)
@@ -189,42 +229,41 @@ function Hireling:setPosition(pos)
 end
 
 function Hireling:getOutfit()
-	local outfit = {
-		lookType = self.looktype,
-		lookHead = self.lookhead,
-		lookAddons = 0,
-		lookMount = 0,
-		lookLegs = self.looklegs,
-		lookBody = self.lookbody,
-		lookFeet = self.lookfeet,
+	local outfit = 	{
+		lookType=self.looktype,
+		lookHead=self.lookhead,
+		lookAddons=0,
+		lookMount=0,
+		lookLegs=self.looklegs,
+		lookBody=self.lookbody,
+		lookFeet=self.lookfeet
 	}
 
 	return outfit
 end
 
 function Hireling:getAvailableOutfits()
-	local player = Player(self:getOwnerId())
-	if not player then
-		return
-	end
 
-	local outfitsAvailable = {}
-	local sex = (self.sex == HIRELING_SEX.FEMALE) and "female" or "male"
-	-- Add default outfit
-	table.insert(outfitsAvailable, { name = HIRELING_OUTFIT_DEFAULT.name, lookType = HIRELING_OUTFIT_DEFAULT[sex] })
-	for key, outfit in pairs(HIRELING_OUTFITS) do
-		local outfitName = outfit[2]
-		local haveOutfit = player:kv():scoped("hireling-outfits"):get(outfitName)
-		if haveOutfit == true then
-			logger.debug("[getAvailableOutfits] found outfit {}", outfitName)
-			tempOutfit = {
-				name = HIRELING_OUTFITS_TABLE[key].name,
-				lookType = HIRELING_OUTFITS_TABLE[key][sex],
-			}
-			table.insert(outfitsAvailable, tempOutfit)
+	local flags = getStorageForPlayer(self:getOwnerId(),HIRELING_STORAGE.OUTFIT)
+	local sex = (self.sex == HIRELING_SEX.FEMALE) and 'female' or 'male'
+
+	local outfits = {}
+	-- add default outfit
+	table.insert(outfits, { name = HIRELING_OUTFIT_DEFAULT.name, lookType = HIRELING_OUTFIT_DEFAULT[sex] })
+	if flags >0 then
+		local outfit
+		for key, value in pairs(HIRELING_OUTFITS) do
+			if hasBitSet(value, flags) then
+				outfit = {
+					name = HIRELING_OUTFITS_TABLE[key].name,
+					lookType = HIRELING_OUTFITS_TABLE[key][sex]
+				}
+				table.insert(outfits, outfit)
+			end
 		end
 	end
-	return outfitsAvailable
+
+	return outfits
 end
 
 function Hireling:requestOutfitChange()
@@ -237,7 +276,7 @@ end
 function Hireling:hasOutfit(lookType)
 	local outfits = self:getAvailableOutfits()
 	local found = false
-	for _, outfit in ipairs(outfits) do
+	for _,outfit in ipairs(outfits) do
 		if outfit.lookType == lookType then
 			return true
 		end
@@ -258,9 +297,7 @@ end
 function Hireling:changeOutfit(outfit)
 	HIRELING_OUTFIT_CHANGING[self:getOwnerId()] = nil --clear flag
 
-	if not self:hasOutfit(outfit.lookType) then
-		return
-	end
+	if not self:hasOutfit(outfit.lookType) then return end
 
 	local npc = Npc(self.cid)
 	local creature = Creature(npc) --maybe self.cid works here too
@@ -269,27 +306,14 @@ function Hireling:changeOutfit(outfit)
 	self:setOutfit(outfit)
 end
 
-function Hireling:hasSkill(skillName)
-	local function hasSkillFromPlayer(player)
-		if player then
-			return player:kv():scoped("hireling-skills"):get(skillName) or false
-		end
-	end
 
-	local player = Player(self:getOwnerId()) or Game.getOfflinePlayer(self:getOwnerId())
-	return hasSkillFromPlayer(player)
-end
-
-function Hireling:hasSkill(skillName)
-	local function hasSkillFromPlayer(player)
-		if player then
-			return player:kv():scoped("hireling-skills"):get(skillName) or false
-		end
-
+function Hireling:hasSkill(SKILL)
+	local skills = getStorageForPlayer(self:getOwnerId(), HIRELING_STORAGE.SKILL)
+	if skills <= 0 then
 		return false
+	else
+		return hasBitSet(SKILL, skills)
 	end
-	local player = Player(self:getOwnerId()) or Game.getOfflinePlayer(self:getOwnerId())
-	return hasSkillFromPlayer(player)
 end
 
 function Hireling:setCreature(cid)
@@ -345,7 +369,7 @@ function Hireling:returnToLamp(player_id)
 	addEvent(function(npcId, ownerGuid, hirelingId)
 		local npc = Npc(npcId)
 		if not npc then
-			return logger.error("[Hireling:returnToLamp] - Npc not found or is nil.")
+			return Spdlog.error("[Hireling:returnToLamp] - Npc not found or is nil.")
 		end
 
 		local owner = Player(ownerGuid)
@@ -360,26 +384,25 @@ function Hireling:returnToLamp(player_id)
 		end
 
 		local inbox = owner:getSlotItem(CONST_SLOT_STORE_INBOX)
-		if not inbox then
+		if not inbox or inbox:getEmptySlots() < 1 then
 			owner:getPosition():sendMagicEffect(CONST_ME_POFF)
 			return owner:sendTextMessage(MESSAGE_FAILURE, "You don't have enough room in your inbox.")
 		end
 
 		local hireling = getHirelingById(hirelingId)
 		if not hireling then
-			return logger.error("[Hireling:returnToLamp] - Hireling not found or is nil for hireling name for player {}.", owner:getName())
+			return Spdlog.error("[Hireling:returnToLamp] - Hireling not found or is nil.")
 		end
 
-		npc:say("As you wish!", TALKTYPE_PRIVATE_NP, false, owner, npc:getPosition())
+		npc:say("As you wish!",	TALKTYPE_PRIVATE_NP, false, owner, npc:getPosition())
 		local lamp = inbox:addItem(HIRELING_LAMP, 1, INDEX_WHEREEVER, FLAG_NOLIMIT)
 		npc:getPosition():sendMagicEffect(CONST_ME_PURPLESMOKE)
 		npc:remove() --remove hireling
 		lamp:setAttribute(ITEM_ATTRIBUTE_DESCRIPTION, "This mysterious lamp summons your very own personal hireling.\nThis item cannot be traded.\nThis magic lamp is the home of " .. self:getName() .. ".")
 		lamp:setCustomAttribute("Hireling", hirelingId) --save hirelingId on item
-		hireling:setPosition({ x = 0, y = 0, z = 0 })
+		hireling:setPosition({x=0,y=0,z=0})
 	end, 1000, self.cid, player:getGuid(), self.id)
 end
-
 -- [[ END CLASS DEFINITION ]]
 
 -- [[ GLOBAL FUNCTIONS DEFINITIONS ]]
@@ -389,7 +412,6 @@ function SaveHirelings()
 		hireling:save()
 	end
 end
-
 function getHirelingById(id)
 	local hireling
 	for i = 1, #HIRELINGS do
@@ -412,39 +434,18 @@ function getHirelingByPosition(position)
 	return nil
 end
 
-function GetHirelingSkillNameById(id)
-	for _, skill in pairs(HIRELING_SKILLS) do
-		if skill[1] == id then
-			return skill[2]
-		end
-	end
-	return nil
-end
-
-function GetHirelingOutfitNameById(id)
-	local outfitName = nil
-	for _, outfit in pairs(HIRELING_OUTFITS) do
-		if outfit[1] == id then
-			logger.debug("[GetHirelingOutfitNameById] returning outfit name {}", outfit[2])
-			outfitName = outfit[2]
-			break
-		end
-	end
-
-	return outfitName
-end
-
 function HirelingsInit()
 	local rows = db.storeQuery("SELECT * FROM `player_hirelings`")
+
 	if rows then
-		local player_id, hireling
 		repeat
-			player_id = Result.getNumber(rows, "player_id")
+			local player_id = Result.getNumber(rows, "player_id")
+
 			if not PLAYER_HIRELINGS[player_id] then
 				PLAYER_HIRELINGS[player_id] = {}
 			end
 
-			hireling = Hireling:new()
+			local hireling = Hireling:new()
 			hireling.id = Result.getNumber(rows, "id")
 			hireling.player_id = player_id
 			hireling.name = Result.getString(rows, "name")
@@ -465,31 +466,20 @@ function HirelingsInit()
 		Result.free(rows)
 
 		spawnNPCs()
+		initStorageCache()
+
 	end
 end
 
 function PersistHireling(hireling)
-	db.query(
-		string.format(
-			"INSERT INTO `player_hirelings` (`player_id`,`name`,`active`,`sex`,`posx`,`posy`,`posz`,`lookbody`,`lookfeet`,`lookhead`,`looklegs`,`looktype`) VALUES (%d, %s, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d)",
-			hireling.player_id,
-			db.escapeString(hireling.name),
-			hireling.active,
-			hireling.sex,
-			hireling.posx,
-			hireling.posy,
-			hireling.posz,
-			hireling.lookbody,
-			hireling.lookfeet,
-			hireling.lookhead,
-			hireling.looklegs,
-			hireling.looktype
-		)
+
+	db.query(string.format("INSERT INTO `player_hirelings` (`player_id`,`name`,`active`,`sex`,`posx`,`posy`,`posz`,`lookbody`,`lookfeet`,`lookhead`,`looklegs`,`looktype`) VALUES (%d, %s, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d)",
+	hireling.player_id, db.escapeString(hireling.name), hireling.active, hireling.sex, hireling.posx, hireling.posy, hireling.posz, hireling.lookbody, hireling.lookfeet, hireling.lookhead, hireling.looklegs, hireling.looktype)
 	)
 
 	local hirelings = PLAYER_HIRELINGS[hireling.player_id] or {}
 	local ids = ""
-	for i = 1, #hirelings do
+	for i=1,#hirelings do
 		if i > 1 then
 			ids = ids .. "','"
 		end
@@ -499,7 +489,7 @@ function PersistHireling(hireling)
 	local resultId = db.storeQuery(query)
 
 	if resultId then
-		local id = Result.getNumber(resultId, "id")
+		local id = Result.getNumber(resultId, 'id')
 		hireling.id = id
 		return true
 	else
@@ -507,6 +497,9 @@ function PersistHireling(hireling)
 	end
 end
 
+-- [[ END GLOBAL FUNCTIONS ]]
+
+-- [[ Player extension ]]
 function Player:getHirelings()
 	return PLAYER_HIRELINGS[self:getGuid()] or {}
 end
@@ -521,24 +514,22 @@ function Player:addNewHireling(name, sex)
 	hireling.name = name
 	hireling.player_id = self:getGuid()
 	if sex == HIRELING_SEX.FEMALE then
-		-- Citizen female
-		hireling.looktype = 136
+		hireling.looktype=136 -- citizen female
 		hireling.sex = HIRELING_SEX.FEMALE
 	else
-		-- Citizen male
-		hireling.looktype = 128
+		hireling.looktype=128 -- citizen male
 		hireling.sex = HIRELING_SEX.MALE
 	end
 
 	local lampType = ItemType(HIRELING_LAMP)
-	if not lampType or self:getFreeCapacity() < lampType:getWeight(1) then
+	if self:getFreeCapacity() < lampType:getWeight(1) then
 		self:getPosition():sendMagicEffect(CONST_ME_POFF)
 		self:sendTextMessage(MESSAGE_FAILURE, "You do not have enough capacity.")
 		return false
 	end
 
 	local inbox = self:getSlotItem(CONST_SLOT_STORE_INBOX)
-	if not inbox then
+	if not inbox or inbox:getEmptySlots() < 1 then
 		self:getPosition():sendMagicEffect(CONST_ME_POFF)
 		self:sendTextMessage(MESSAGE_FAILURE, "You don't have enough room in your inbox.")
 		return false
@@ -546,26 +537,20 @@ function Player:addNewHireling(name, sex)
 
 	local saved = PersistHireling(hireling)
 	if not saved then
-		logger.error("[Player:addNewHireling] error to saving Hireling '{}' for player '{}'", name, self:getName())
+		DebugPrint('Error saving Hireling:' .. name .. ' - player:' .. self:getName())
 		return false
+	else
+		if not PLAYER_HIRELINGS[self:getGuid()] then
+			PLAYER_HIRELINGS[self:getGuid()] = {}
+		end
+		table.insert(PLAYER_HIRELINGS[self:getGuid()], hireling)
+		table.insert(HIRELINGS, hireling)
+		local lamp = inbox:addItem(HIRELING_LAMP, 1, INDEX_WHEREEVER, FLAG_NOLIMIT)
+		lamp:setAttribute(ITEM_ATTRIBUTE_DESCRIPTION, "This mysterious lamp summons your very own personal hireling.\nThis item cannot be traded.\nThis magic lamp is the home of " .. hireling:getName() .. ".")
+		lamp:setCustomAttribute("Hireling", hireling:getId()) --save hirelingId on item
+		hireling.active = 0
+		return hireling
 	end
-
-	local lamp = inbox:addItem(HIRELING_LAMP, 1, INDEX_WHEREEVER, FLAG_NOLIMIT)
-	if not lamp then
-		logger.error("[Player:addNewHireling] error to add hireling lamp '{}' for player {}", name, self:getName())
-		return false
-	end
-
-	if not PLAYER_HIRELINGS[self:getGuid()] then
-		PLAYER_HIRELINGS[self:getGuid()] = {}
-	end
-	table.insert(PLAYER_HIRELINGS[self:getGuid()], hireling)
-	table.insert(HIRELINGS, hireling)
-
-	lamp:setAttribute(ITEM_ATTRIBUTE_DESCRIPTION, "This mysterious lamp summons your very own personal hireling.\nThis item cannot be traded.\nThis magic lamp is the home of " .. hireling:getName() .. ".")
-	lamp:setCustomAttribute("Hireling", hireling:getId())
-	hireling.active = 0
-	return hireling
 end
 
 function Player:isChangingHirelingOutfit()
@@ -584,8 +569,7 @@ end
 function Player:sendHirelingOutfitWindow(hireling)
 	local outfit = hireling:getOutfit()
 	local msg = NetworkMessage()
-	-- 'ProtocolGame::sendOutfitWindow()' header
-	msg:addByte(0xC8)
+	msg:addByte(0xC8) -- 'ProtocolGame::sendOutfitWindow()'' header
 	msg:addU16(outfit.lookType)
 
 	if outfit.lookType == 0 then
@@ -607,9 +591,9 @@ function Player:sendHirelingOutfitWindow(hireling)
 
 	local availableOutfits = hireling:getAvailableOutfits()
 	msg:addU16(#availableOutfits)
-	for _, outfit in ipairs(availableOutfits) do
+	for _,outfit in ipairs(availableOutfits) do
 		msg:addU16(outfit.lookType)
-		msg:addString(outfit.name, "Player:sendHirelingOutfitWindow - outfit.name")
+		msg:addString(outfit.name)
 		msg:addByte(0x00) -- addons
 		msg:addByte(0x00) -- Store bool
 	end
@@ -627,14 +611,21 @@ function Player:hasHirelings()
 	return PLAYER_HIRELINGS[self:getGuid()] and #PLAYER_HIRELINGS[self:getGuid()] > 0 or false
 end
 
+function Player:copyHirelingStorageToCache()
+	if(self:hasHirelings()) then
+		local storageSkill = self:getStorageValue(HIRELING_STORAGE.SKILL)
+		local storageOutfit = self:getStorageValue(HIRELING_STORAGE.OUTFIT)
+		addStorageCacheValue(self:getGuid(),HIRELING_STORAGE.SKILL, storageSkill)
+		addStorageCacheValue(self:getGuid(),HIRELING_STORAGE.OUTFIT, storageOutfit)
+	end
+end
+
 function Player:findHirelingLamp(hirelingId)
 	local inbox = self:getSlotItem(CONST_SLOT_STORE_INBOX)
-	if not inbox then
-		return nil
-	end
+	if not inbox then return nil end
 
 	local lastIndex = inbox:getSize() - 1
-	for i = 0, lastIndex do
+	for i=0,lastIndex do
 		local item = inbox:getItem(i)
 		if item and item:getId() == HIRELING_LAMP and item:getCustomAttribute("Hireling") == hirelingId then
 			return item
@@ -647,14 +638,14 @@ function Player:sendHirelingSelectionModal(title, message, callback, data)
 	-- callback(playerId, data, hireling)
 	-- get all hireling list
 	local hirelings = self:getHirelings()
-	local modal = ModalWindow({
+	local modal = ModalWindow {
 		title = title,
-		message = message,
-	})
+		message = message
+	}
 	local hireling
-	for i = 1, #hirelings do
+	for i=1,#hirelings do
 		hireling = hirelings[i]
-		local choice = modal:addChoice(string.format("#%d - %s", i, hireling:getName()))
+		local choice = modal:addChoice(string.format('#%d - %s', i, hireling:getName()))
 		choice.hireling = hireling
 	end
 
@@ -664,58 +655,59 @@ function Player:sendHirelingSelectionModal(title, message, callback, data)
 		callback(playerId, data, hrlng)
 	end
 
-	local internalCancel = function(btn, choice)
-		callback(playerId, data, nil)
-	end
+	local internalCancel = function(btn, choice) callback(playerId, data, nil) end
 
-	modal:addButton("Select", internalConfirm)
-	modal:setDefaultEnterButton("Select")
-	modal:addButton("Cancel", internalCancel)
-	modal:setDefaultEscapeButton("Cancel")
+	modal:addButton('Select',internalConfirm)
+	modal:setDefaultEnterButton('Select')
+	modal:addButton('Cancel',internalCancel)
+	modal:setDefaultEscapeButton('Cancel')
 
 	modal:sendToPlayer(self)
 end
 
-function Player:hasHirelingSkill(skillName)
-	return self:kv():scoped("hireling-skills"):get(skillName)
+function Player:showInfoModal(title, message, buttonText)
+	local modal = ModalWindow {
+		title = title,
+		message = message
+	}
+	buttonText = buttonText or 'Close'
+	modal:addButton(buttonText,function()end)
+	modal:setDefaultEscapeButton(buttonText)
+
+	modal:sendToPlayer(self)
 end
 
-function Player:enableHirelingSkill(skillName)
-	local skillScoped = self:kv():scoped("hireling-skills")
-	if skillScoped:get(skillName) then
-		logger.debug("Player '{}' already have hireling skill name '{}'", self:getName(), skillName)
-		return
-	end
-
-	skillScoped:set(skillName, true)
-end
-
-function Player:hasHirelingOutfit(outfitName)
-	return self:kv():scoped("hireling-outfits"):get(outfitName)
-end
-
-function Player:enableHirelingOutfit(outfitName)
-	local outfitScoped = self:kv():scoped("hireling-outfits")
-	if outfitScoped:get(outfitName) then
-		logger.debug("Player '{}' already have hireling outfit name '{}'", self:getName(), outfitName)
-		return
-	end
-
-	outfitScoped:set(outfitName, true)
-end
-
-function Player:clearAllHirelingStats()
-	local skillsScoped = self:kv():scoped("hireling-skills")
-	for key, skills in pairs(HIRELING_SKILLS) do
-		if skillsScoped:get(skills[2]) then
-			skillsScoped:set(skills[2], false)
-		end
-	end
-
-	local outfitsScoped = self:kv():scoped("hireling-outfits")
-	for key, outfits in pairs(HIRELING_OUTFITS) do
-		if outfitsScoped:get(outfits[2]) then
-			outfitsScoped:set(outfits[2], false)
-		end
+function Player:hasHirelingSkill(SKILL)
+	local skills = self:getStorageValue(HIRELING_STORAGE.SKILL)
+	if skills <= 0 then
+		return false
+	else
+		return hasBitSet(SKILL, skills)
 	end
 end
+
+function Player:enableHirelingSkill(SKILL)
+	local skills = self:getStorageValue(HIRELING_STORAGE.SKILL)
+	if skills < 0 then skills = 0 end
+	skills = setFlag(SKILL, skills)
+	self:setStorageValue(HIRELING_STORAGE.SKILL, skills)
+	self:copyHirelingStorageToCache()
+end
+
+function Player:hasHirelingOutfit(OUTFIT)
+	local outfits = self:getStorageValue(HIRELING_STORAGE.OUTFIT)
+	if outfits <= 0 then
+		return false
+	else
+		return hasBitSet(OUTFIT, outfits)
+	end
+end
+
+function Player:enableHirelingOutfit(OUTFIT)
+	local outfits = self:getStorageValue(HIRELING_STORAGE.OUTFIT)
+	if outfits < 0 then outfits = 0 end
+	outfits = setFlag(OUTFIT, outfits)
+	self:setStorageValue(HIRELING_STORAGE.OUTFIT, outfits)
+	self:copyHirelingStorageToCache()
+end
+-- [[ END PLAYER EXTENSION ]]

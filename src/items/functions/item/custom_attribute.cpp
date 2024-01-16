@@ -11,26 +11,30 @@
 
 #include "items/functions/item/custom_attribute.hpp"
 
-#include "lua/scripts/luascript.hpp"
+#include "lua/scripts/luascript.h"
 
 CustomAttribute::CustomAttribute() = default;
 CustomAttribute::~CustomAttribute() = default;
 
 // Constructor for int64_t
 CustomAttribute::CustomAttribute(const std::string &initStringKey, const int64_t initInt64) :
-	stringKey(initStringKey), value(initInt64) {
+	stringKey(initStringKey) {
+	setValue(initInt64);
 }
 // Constructor for string
 CustomAttribute::CustomAttribute(const std::string &initStringKey, const std::string &initStringValue) :
-	stringKey(initStringKey), value(initStringValue) {
+	stringKey(initStringKey) {
+	setValue(initStringValue);
 }
 // Constructor for double
 CustomAttribute::CustomAttribute(const std::string &initStringKey, const double initDoubleValue) :
-	stringKey(initStringKey), value(initDoubleValue) {
+	stringKey(initStringKey) {
+	setValue(initDoubleValue);
 }
 // Constructor for boolean
 CustomAttribute::CustomAttribute(const std::string &initStringKey, const bool initBoolValue) :
-	stringKey(initStringKey), value(initBoolValue) {
+	stringKey(initStringKey) {
+	setValue(initBoolValue);
 }
 
 const std::string &CustomAttribute::getStringKey() const {
@@ -107,7 +111,7 @@ void CustomAttribute::serialize(PropWriteStream &propWriteStream) const {
 bool CustomAttribute::unserialize(PropStream &propStream, const std::string &function) {
 	uint8_t type;
 	if (!propStream.read<uint8_t>(type)) {
-		g_logger().error("[{}] Failed to read type", function);
+		SPDLOG_ERROR("[{}] Failed to read type", function);
 		return false;
 	}
 
@@ -115,37 +119,37 @@ bool CustomAttribute::unserialize(PropStream &propStream, const std::string &fun
 		case 1: {
 			std::string readString;
 			if (!propStream.readString(readString)) {
-				g_logger().error("[{}] failed to read string, call function: {}", __FUNCTION__, function);
+				SPDLOG_ERROR("[{}] failed to read string, call function: {}", __FUNCTION__, function);
 				return false;
 			}
-			value = readString;
+			setValue(readString);
 			break;
 		}
 		case 2: {
 			int64_t readInt;
 			if (!propStream.read<int64_t>(readInt)) {
-				g_logger().error("[{}] failed to read int64, call function: {}", __FUNCTION__, function);
+				SPDLOG_ERROR("[{}] failed to read int64, call function: {}", __FUNCTION__, function);
 				return false;
 			}
-			value = readInt;
+			setValue(readInt);
 			break;
 		}
 		case 3: {
 			double readDouble;
 			if (!propStream.read<double>(readDouble)) {
-				g_logger().error("[{}] failed to read double, call function: {}", __FUNCTION__, function);
+				SPDLOG_ERROR("[{}] failed to read double, call function: {}", __FUNCTION__, function);
 				return false;
 			}
-			value = readDouble;
+			setValue(readDouble);
 			break;
 		}
 		case 4: {
 			bool readBoolean;
 			if (!propStream.read<bool>(readBoolean)) {
-				g_logger().error("[{}] failed to read boolean, call function: {}", __FUNCTION__, function);
+				SPDLOG_ERROR("[{}] failed to read boolean, call function: {}", __FUNCTION__, function);
 				return false;
 			}
-			value = readBoolean;
+			setValue(readBoolean);
 			break;
 		}
 		default:

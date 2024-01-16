@@ -7,7 +7,8 @@
  * Website: https://docs.opentibiabr.com/
  */
 
-#pragma once
+#ifndef SRC_ITEMS_ITEMS_DEFINITIONS_HPP_
+#define SRC_ITEMS_ITEMS_DEFINITIONS_HPP_
 
 class Imbuement;
 
@@ -19,7 +20,7 @@ enum ItemProperty {
 	CONST_PROP_BLOCKPATH,
 	CONST_PROP_ISVERTICAL,
 	CONST_PROP_ISHORIZONTAL,
-	CONST_PROP_MOVABLE,
+	CONST_PROP_MOVEABLE,
 	CONST_PROP_IMMOVABLEBLOCKSOLID,
 	CONST_PROP_IMMOVABLEBLOCKPATH,
 	CONST_PROP_IMMOVABLENOFIELDBLOCKPATH,
@@ -43,7 +44,7 @@ enum ReturnValue {
 	RETURNVALUE_THEREISNOWAY,
 	RETURNVALUE_DESTINATIONOUTOFREACH,
 	RETURNVALUE_CREATUREBLOCK,
-	RETURNVALUE_NOTMOVABLE,
+	RETURNVALUE_NOTMOVEABLE,
 	RETURNVALUE_DROPTWOHANDEDITEM,
 	RETURNVALUE_BOTHHANDSNEEDTOBEFREE,
 	RETURNVALUE_CANONLYUSEONEWEAPON,
@@ -60,7 +61,6 @@ enum ReturnValue {
 	RETURNVALUE_CANNOTPICKUP,
 	RETURNVALUE_THISISIMPOSSIBLE,
 	RETURNVALUE_DEPOTISFULL,
-	RETURNVALUE_CONTAINERISFULL,
 	RETURNVALUE_CREATUREDOESNOTEXIST,
 	RETURNVALUE_CANNOTUSETHISOBJECT,
 	RETURNVALUE_PLAYERWITHTHISNAMEISNOTONLINE,
@@ -118,9 +118,7 @@ enum ReturnValue {
 	RETURNVALUE_NOTENOUGHFISHLEVEL,
 	RETURNVALUE_REWARDCHESTISEMPTY,
 	RETURNVALUE_REWARDCONTAINERISEMPTY,
-	RETURNVALUE_CONTACTADMINISTRATOR,
-	RETURNVALUE_ITEMISNOTYOURS,
-	RETURNVALUE_ITEMUNTRADEABLE,
+	RETURNVALUE_CONTACTADMINISTRATOR
 };
 
 enum ItemGroup_t {
@@ -182,10 +180,6 @@ enum ItemTypes_t {
 	ITEM_TYPE_GOLD,
 	ITEM_TYPE_UNASSIGNED,
 
-	// Other types
-	ITEM_TYPE_LADDER,
-	ITEM_TYPE_DUMMY,
-
 	ITEM_TYPE_LAST,
 };
 
@@ -237,8 +231,6 @@ enum AttrTypes_t {
 	ATTR_AMOUNT = 39,
 	ATTR_TIER = 40,
 	ATTR_CUSTOM = 41,
-	ATTR_STORE_INBOX_CATEGORY = 42,
-	ATTR_OWNER = 43,
 
 	// Always the last
 	ATTR_NONE = 0
@@ -264,130 +256,6 @@ enum ImbuementTypes_t : int64_t {
 	IMBUEMENT_SKILLBOOST_DISTANCE = 15,
 	IMBUEMENT_SKILLBOOST_MAGIC_LEVEL = 16,
 	IMBUEMENT_INCREASE_CAPACITY = 17
-};
-
-enum class ContainerCategory_t : uint8_t {
-	All,
-	Ammunition,
-	AmuletsAndNecklaces,
-	Animals,
-	Annelids,
-	Arachnids,
-	Armors,
-	ArtificialTiles,
-	AstralShapers,
-	AttackRunes,
-	AxeWeapons,
-	Bats,
-	Bears,
-	Birds,
-	BlessingCharms,
-	Blobs,
-	Books,
-	Boots,
-	Bushes,
-	Cactuses,
-	Canines,
-	Casks,
-	Closets,
-	ClothingAccessories,
-	ClubWeapons,
-	Coffins,
-	Constructions,
-	Containers,
-	ContestPrizes,
-	CreatureProducts,
-	Decoration,
-	Demons,
-	DistanceWeapons,
-	DocumentsAndPapers,
-	DollsAndBears,
-	Doors,
-	Dragons,
-	Dreamhaunters,
-	Dropdowns,
-	EnchantedItems,
-	EventCreatures,
-	ExerciseWeapons,
-	FansiteItems,
-	Ferns,
-	Fields,
-	Flags,
-	FloorDecorations,
-	FloraAndMinerals,
-	Flowers,
-	FluidContainers,
-	Food,
-	Furniture,
-	GameTokens,
-	Ghosts,
-	Glires,
-	Grass,
-	HealingRunes,
-	Helmets,
-	HiveBorn,
-	Illumination,
-	Keys,
-	KitchenTools,
-	Ladders,
-	Legs,
-	LightSources,
-	Liquids,
-	MachinesObjects,
-	Machines,
-	MagicalItems,
-	Metals,
-	Mollusks,
-	Mushrooms,
-	MusicalInstruments,
-	NaturalProducts,
-	NaturalTiles,
-	OtherItems,
-	Outlaws,
-	PaintingEquipment,
-	PartyItems,
-	Pillars,
-	PlantsAndHerbs,
-	Plants,
-	Portals,
-	QuestItems,
-	QuestObjects,
-	Quivers,
-	Refuse,
-	Remains,
-	Rings,
-	Rocks,
-	Rods,
-	Rubbish,
-	Shields,
-	ShrinesAndAltars,
-	Signs,
-	Skeletons,
-	Spellbooks,
-	Stairs,
-	Statues,
-	SupportRunes,
-	SwordWeapons,
-	Tables,
-	TamingItems,
-	Teleporters,
-	ToolsObjects,
-	Tools,
-	TortureInstruments,
-	TournamentRewards,
-	TrainingWeapons,
-	Transportation,
-	Traps,
-	Trees,
-	Trophies,
-	UndeadHumanoids,
-	Ungulates,
-	Utilities,
-	Valuables,
-	WallHangings,
-	Walls,
-	Wands,
-	Windows
 };
 
 enum SlotPositionBits : uint32_t {
@@ -434,11 +302,6 @@ enum TileFlags_t : uint32_t {
 	TILESTATE_IMMOVABLENOFIELDBLOCKPATH = 1 << 21,
 	TILESTATE_NOFIELDBLOCKPATH = 1 << 22,
 	TILESTATE_SUPPORTS_HANGABLE = 1 << 23,
-	TILESTATE_MOVABLE = 1 << 24,
-	TILESTATE_ISHORIZONTAL = 1 << 25,
-	TILESTATE_ISVERTICAL = 1 << 26,
-	TILESTATE_BLOCKPROJECTILE = 1 << 27,
-	TILESTATE_HASHEIGHT = 1 << 28,
 
 	TILESTATE_FLOORCHANGE = TILESTATE_FLOORCHANGE_DOWN | TILESTATE_FLOORCHANGE_NORTH | TILESTATE_FLOORCHANGE_SOUTH | TILESTATE_FLOORCHANGE_EAST | TILESTATE_FLOORCHANGE_WEST | TILESTATE_FLOORCHANGE_SOUTH_ALT | TILESTATE_FLOORCHANGE_EAST_ALT,
 };
@@ -458,7 +321,7 @@ enum CylinderFlags_t {
 	FLAG_CHILDISOWNER = 1 << 3, // Used by containers to query capacity of the carrier (player)
 	FLAG_PATHFINDING = 1 << 4, // An additional check is done for floor changing/teleport items
 	FLAG_IGNOREFIELDDAMAGE = 1 << 5, // Bypass field damage checks
-	FLAG_IGNORENOTMOVABLE = 1 << 6, // Bypass check for mobility
+	FLAG_IGNORENOTMOVEABLE = 1 << 6, // Bypass check for mobility
 	FLAG_IGNOREAUTOSTACK = 1 << 7, // queryDestination will not try to stack items together
 };
 
@@ -483,7 +346,7 @@ enum ItemParseAttributes_t {
 	ITEM_PARSE_WRAPCONTAINER,
 	ITEM_PARSE_IMBUEMENT,
 	ITEM_PARSE_WRAPABLETO,
-	ITEM_PARSE_MOVABLE,
+	ITEM_PARSE_MOVEABLE,
 	ITEM_PARSE_BLOCKPROJECTILE,
 	ITEM_PARSE_PICKUPABLE,
 	ITEM_PARSE_FLOORCHANGE,
@@ -535,8 +398,8 @@ enum ItemParseAttributes_t {
 	ITEM_PARSE_MAXHITPOINTSPERCENT,
 	ITEM_PARSE_MAXMANAPOINTS,
 	ITEM_PARSE_MAXMANAPOINTSPERCENT,
-	ITEM_PARSE_MAGICLEVELPOINTS,
-	ITEM_PARSE_MAGICLEVELPOINTSPERCENT,
+	ITEM_PARSE_MAGICPOINTS,
+	ITEM_PARSE_MAGICPOINTSPERCENT,
 	ITEM_PARSE_FIELDABSORBPERCENTENERGY,
 	ITEM_PARSE_FIELDABSORBPERCENTFIRE,
 	ITEM_PARSE_FIELDABSORBPERCENTPOISON,
@@ -569,9 +432,7 @@ enum ItemParseAttributes_t {
 	ITEM_PARSE_LEVELDOOR,
 	ITEM_PARSE_MALETRANSFORMTO,
 	ITEM_PARSE_FEMALETRANSFORMTO,
-	ITEM_PARSE_BEDPART,
-	ITEM_PARSE_BEDPARTOF,
-	ITEM_PARSE_TRANSFORMONUSE,
+	ITEM_PARSE_TRANSFORMTO,
 	ITEM_PARSE_DESTROYTO,
 	ITEM_PARSE_ELEMENTICE,
 	ITEM_PARSE_ELEMENTEARTH,
@@ -582,28 +443,11 @@ enum ItemParseAttributes_t {
 	ITEM_PARSE_WALKSTACK,
 	ITEM_PARSE_BLOCK_SOLID,
 	ITEM_PARSE_ALLOWDISTREAD,
-	ITEM_PARSE_STACKSIZE,
-	// 12.72 modifiers
-	ITEM_PARSE_DEATHMAGICLEVELPOINTS,
-	ITEM_PARSE_ENERGYMAGICLEVELPOINTS,
-	ITEM_PARSE_EARTHMAGICLEVELPOINTS,
-	ITEM_PARSE_FIREMAGICLEVELPOINTS,
-	ITEM_PARSE_ICEMAGICLEVELPOINTS,
-	ITEM_PARSE_HEALINGMAGICLEVELPOINTS,
-	ITEM_PARSE_HOLYMAGICLEVELPOINTS,
-	ITEM_PARSE_PHYSICALMAGICLEVELPOINTS,
-	ITEM_PARSE_MAGICSHIELDCAPACITYPERCENT,
-	ITEM_PARSE_MAGICSHIELDCAPACITYFLAT,
-	ITEM_PARSE_PERFECTSHOTDAMAGE,
-	ITEM_PARSE_PERFECTSHOTRANGE,
-	ITEM_PARSE_CLEAVEPERCENT,
-	ITEM_PARSE_REFLECTPERCENTALL,
-	ITEM_PARSE_REFLECTDAMAGE,
-	ITEM_PARSE_PRIMARYTYPE,
-	ITEM_PARSE_USEDBYGUESTS,
 };
 
 struct ImbuementInfo {
-	Imbuement* imbuement;
-	uint32_t duration = 0;
+		Imbuement* imbuement;
+		uint32_t duration = 0;
 };
+
+#endif // SRC_ITEMS_ITEMS_DEFINITIONS_HPP_

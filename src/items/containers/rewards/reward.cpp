@@ -9,7 +9,7 @@
 
 #include "pch.hpp"
 
-#include "items/containers/rewards/reward.hpp"
+#include "items/containers/rewards/reward.h"
 
 Reward::Reward() :
 	Container(ITEM_REWARD_CONTAINER) {
@@ -18,17 +18,17 @@ Reward::Reward() :
 	pagination = true;
 }
 
-ReturnValue Reward::queryAdd(int32_t, const std::shared_ptr<Thing> &thing, uint32_t, uint32_t, std::shared_ptr<Creature> actor /* = nullptr*/) {
+ReturnValue Reward::queryAdd(int32_t, const Thing &thing, uint32_t, uint32_t, Creature* actor /* = nullptr*/) const {
 	if (actor) {
 		return RETURNVALUE_NOTPOSSIBLE;
 	}
 
-	std::shared_ptr<Item> item = thing->getItem();
+	const Item* item = thing.getItem();
 	if (!item) {
 		return RETURNVALUE_NOTPOSSIBLE;
 	}
 
-	if (item.get() == this) {
+	if (item == this) {
 		return RETURNVALUE_THISISIMPOSSIBLE;
 	}
 
@@ -39,20 +39,20 @@ ReturnValue Reward::queryAdd(int32_t, const std::shared_ptr<Thing> &thing, uint3
 	return RETURNVALUE_NOERROR;
 }
 
-void Reward::postAddNotification(std::shared_ptr<Thing> thing, std::shared_ptr<Cylinder> oldParent, int32_t index, CylinderLink_t) {
-	std::shared_ptr<Cylinder> localParent = getParent();
+void Reward::postAddNotification(Thing* thing, const Cylinder* oldParent, int32_t index, CylinderLink_t) {
+	Cylinder* localParent = getParent();
 	if (localParent != nullptr) {
 		localParent->postAddNotification(thing, oldParent, index, LINK_PARENT);
 	}
 }
 
-void Reward::postRemoveNotification(std::shared_ptr<Thing> thing, std::shared_ptr<Cylinder> newParent, int32_t index, CylinderLink_t) {
-	std::shared_ptr<Cylinder> localParent = getParent();
+void Reward::postRemoveNotification(Thing* thing, const Cylinder* newParent, int32_t index, CylinderLink_t) {
+	Cylinder* localParent = getParent();
 	if (localParent != nullptr) {
 		localParent->postRemoveNotification(thing, newParent, index, LINK_PARENT);
 	}
 }
 
-std::shared_ptr<Cylinder> Reward::getParent() {
-	return m_parent.lock();
+Cylinder* Reward::getParent() const {
+	return parent;
 }

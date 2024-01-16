@@ -10,23 +10,27 @@
 #include "pch.hpp"
 
 #include "lua/functions/events/global_event_functions.hpp"
-#include "game/game.hpp"
-#include "lua/global/globalevent.hpp"
-#include "lua/scripts/scripts.hpp"
-#include "utils/tools.hpp"
+#include "game/game.h"
+#include "lua/global/globalevent.h"
+#include "lua/scripts/scripts.h"
+#include "utils/tools.h"
 
 int GlobalEventFunctions::luaCreateGlobalEvent(lua_State* L) {
-	const auto global = std::make_shared<GlobalEvent>(getScriptEnv()->getScriptInterface());
-	global->setName(getString(L, 2));
-	global->setEventType(GLOBALEVENT_NONE);
-	pushUserdata<GlobalEvent>(L, global);
-	setMetatable(L, -1, "GlobalEvent");
+	GlobalEvent* global = new GlobalEvent(getScriptEnv()->getScriptInterface());
+	if (global) {
+		global->setName(getString(L, 2));
+		global->setEventType(GLOBALEVENT_NONE);
+		pushUserdata<GlobalEvent>(L, global);
+		setMetatable(L, -1, "GlobalEvent");
+	} else {
+		lua_pushnil(L);
+	}
 	return 1;
 }
 
 int GlobalEventFunctions::luaGlobalEventType(lua_State* L) {
 	// globalevent:type(callback)
-	const auto global = getUserdataShared<GlobalEvent>(L, 1);
+	GlobalEvent* global = getUserdata<GlobalEvent>(L, 1);
 	if (global) {
 		std::string typeName = getString(L, 2);
 		std::string tmpStr = asLowerCaseString(typeName);
@@ -41,8 +45,8 @@ int GlobalEventFunctions::luaGlobalEventType(lua_State* L) {
 		} else if (tmpStr == "onthink") {
 			global->setEventType(GLOBALEVENT_ON_THINK);
 		} else {
-			g_logger().error("[GlobalEventFunctions::luaGlobalEventType] - "
-							 "Invalid type for global event: {}");
+			SPDLOG_ERROR("[GlobalEventFunctions::luaGlobalEventType] - "
+						 "Invalid type for global event: {}");
 			pushBoolean(L, false);
 		}
 		pushBoolean(L, true);
@@ -54,14 +58,9 @@ int GlobalEventFunctions::luaGlobalEventType(lua_State* L) {
 
 int GlobalEventFunctions::luaGlobalEventRegister(lua_State* L) {
 	// globalevent:register()
-	const auto globalevent = getUserdataShared<GlobalEvent>(L, 1);
+	GlobalEvent* globalevent = getUserdata<GlobalEvent>(L, 1);
 	if (globalevent) {
 		if (!globalevent->isLoadedCallback()) {
-			pushBoolean(L, false);
-			return 1;
-		}
-		if (globalevent->getEventType() == GLOBALEVENT_NONE && globalevent->getInterval() == 0) {
-			g_logger().error("{} - No interval for globalevent with name {}", __FUNCTION__, globalevent->getName());
 			pushBoolean(L, false);
 			return 1;
 		}
@@ -74,7 +73,7 @@ int GlobalEventFunctions::luaGlobalEventRegister(lua_State* L) {
 
 int GlobalEventFunctions::luaGlobalEventOnCallback(lua_State* L) {
 	// globalevent:onThink / record / etc. (callback)
-	const auto globalevent = getUserdataShared<GlobalEvent>(L, 1);
+	GlobalEvent* globalevent = getUserdata<GlobalEvent>(L, 1);
 	if (globalevent) {
 		if (!globalevent->loadCallback()) {
 			pushBoolean(L, false);
@@ -89,16 +88,16 @@ int GlobalEventFunctions::luaGlobalEventOnCallback(lua_State* L) {
 
 int GlobalEventFunctions::luaGlobalEventTime(lua_State* L) {
 	// globalevent:time(time)
-	const auto globalevent = getUserdataShared<GlobalEvent>(L, 1);
+	GlobalEvent* globalevent = getUserdata<GlobalEvent>(L, 1);
 	if (globalevent) {
 		std::string timer = getString(L, 2);
 		std::vector<int32_t> params = vectorAtoi(explodeString(timer, ":"));
 
 		int32_t hour = params.front();
 		if (hour < 0 || hour > 23) {
-			g_logger().error("[GlobalEventFunctions::luaGlobalEventTime] - "
-							 "Invalid hour {} for globalevent with name: {}",
-							 timer, globalevent->getName());
+			SPDLOG_ERROR("[GlobalEventFunctions::luaGlobalEventTime] - "
+						 "Invalid hour {} for globalevent with name: {}",
+						 timer, globalevent->getName());
 			pushBoolean(L, false);
 			return 1;
 		}
@@ -110,9 +109,9 @@ int GlobalEventFunctions::luaGlobalEventTime(lua_State* L) {
 		if (params.size() > 1) {
 			min = params[1];
 			if (min < 0 || min > 59) {
-				g_logger().error("[GlobalEventFunctions::luaGlobalEventTime] - "
-								 "Invalid minute: {} for globalevent with name: {}",
-								 timer, globalevent->getName());
+				SPDLOG_ERROR("[GlobalEventFunctions::luaGlobalEventTime] - "
+							 "Invalid minute: {} for globalevent with name: {}",
+							 timer, globalevent->getName());
 				pushBoolean(L, false);
 				return 1;
 			}
@@ -120,9 +119,9 @@ int GlobalEventFunctions::luaGlobalEventTime(lua_State* L) {
 			if (params.size() > 2) {
 				sec = params[2];
 				if (sec < 0 || sec > 59) {
-					g_logger().error("[GlobalEventFunctions::luaGlobalEventTime] - "
-									 "Invalid minute: {} for globalevent with name: {}",
-									 timer, globalevent->getName());
+					SPDLOG_ERROR("[GlobalEventFunctions::luaGlobalEventTime] - "
+								 "Invalid minute: {} for globalevent with name: {}",
+								 timer, globalevent->getName());
 					pushBoolean(L, false);
 					return 1;
 				}
@@ -152,7 +151,7 @@ int GlobalEventFunctions::luaGlobalEventTime(lua_State* L) {
 
 int GlobalEventFunctions::luaGlobalEventInterval(lua_State* L) {
 	// globalevent:interval(interval)
-	const auto globalevent = getUserdataShared<GlobalEvent>(L, 1);
+	GlobalEvent* globalevent = getUserdata<GlobalEvent>(L, 1);
 	if (globalevent) {
 		globalevent->setInterval(getNumber<uint32_t>(L, 2));
 		globalevent->setNextExecution(OTSYS_TIME() + getNumber<uint32_t>(L, 2));

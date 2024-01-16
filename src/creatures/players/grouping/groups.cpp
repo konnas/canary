@@ -9,11 +9,11 @@
 
 #include "pch.hpp"
 
-#include "config/configmanager.hpp"
-#include "game/game.hpp"
-#include "creatures/players/grouping/groups.hpp"
-#include "utils/pugicast.hpp"
-#include "utils/tools.hpp"
+#include "config/configmanager.h"
+#include "game/game.h"
+#include "creatures/players/grouping/groups.h"
+#include "utils/pugicast.h"
+#include "utils/tools.h"
 
 namespace ParsePlayerFlagMap {
 	// Initialize the map with all the values from the PlayerFlags_t enumeration
@@ -69,7 +69,7 @@ void parseGroupFlags(Group &group, const pugi::xml_node &groupNode) {
 
 bool Groups::load() {
 	pugi::xml_document doc;
-	auto folder = g_configManager().getString(CORE_DIRECTORY, __FUNCTION__) + "/XML/groups.xml";
+	auto folder = g_configManager().getString(CORE_DIRECTORY) + "/XML/groups.xml";
 	pugi::xml_parse_result result = doc.load_file(folder.c_str());
 	if (!result) {
 		printXMLError(__FUNCTION__, folder, result);

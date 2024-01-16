@@ -7,7 +7,8 @@
  * Website: https://docs.opentibiabr.com/
  */
 
-#pragma once
+#ifndef SRC_UTILS_UTILS_DEFINITIONS_HPP_
+#define SRC_UTILS_UTILS_DEFINITIONS_HPP_
 
 // Enums
 enum Icons_t {
@@ -48,6 +49,37 @@ enum WieldInfo_t {
 	WIELDINFO_PREMIUM = 1 << 3,
 };
 
+enum CreatureIcon_t {
+	CREATUREICON_NONE = 0,
+	CREATUREICON_HIGHERRECEIVEDDAMAGE = 1,
+	CREATUREICON_LOWERDEALTDAMAGE = 2,
+	CREATUREICON_TURNEDMELEE = 3,
+	CREATUREICON_GREENBALL = 4,
+	CREATUREICON_REDBALL = 5,
+	CREATUREICON_GREENSHIELD = 6,
+	CREATUREICON_YELLOWSHIELD = 7,
+	CREATUREICON_BLUESHIELD = 8,
+	CREATUREICON_PURPLESHIELD = 9,
+	CREATUREICON_REDSHIELD = 10,
+	CREATUREICON_PIGEON = 11,
+	CREATUREICON_PURPLESTAR = 12,
+	CREATUREICON_POISONDROP = 13,
+	CREATUREICON_WATERDROP = 14,
+	CREATUREICON_FIREDROP = 15,
+	CREATUREICON_ICEFLOWER = 16,
+	CREATUREICON_ARROWUP = 17,
+	CREATUREICON_ARROWDOWN = 18,
+	CREATUREICON_EXCLAMATIONMARK = 19,
+	CREATUREICON_QUESTIONMARK = 20,
+	CREATUREICON_CANCELMARK = 21
+};
+
+enum ThreadState {
+	THREAD_STATE_RUNNING,
+	THREAD_STATE_CLOSING,
+	THREAD_STATE_TERMINATED,
+};
+
 enum SpawnType_t {
 	RESPAWN_IN_ALL = 0,
 	RESPAWN_IN_DAY = 1,
@@ -67,12 +99,10 @@ enum Cipbia_Elementals_t : uint8_t {
 	CIPBIA_ELEMENTAL_HEALING = 7,
 	CIPBIA_ELEMENTAL_DROWN = 8,
 	CIPBIA_ELEMENTAL_LIFEDRAIN = 9,
-	CIPBIA_ELEMENTAL_MANADRAIN = 10,
-	CIPBIA_ELEMENTAL_AGONY = 11,
-	CIPBIA_ELEMENTAL_UNDEFINED = 12,
+	CIPBIA_ELEMENTAL_UNDEFINED = 10
 };
 
-enum MagicEffectClasses : uint16_t {
+enum MagicEffectClasses : uint8_t {
 	CONST_ME_NONE,
 
 	CONST_ME_DRAWBLOOD = 1,
@@ -217,8 +247,7 @@ enum MagicEffectClasses : uint16_t {
 	CONST_ME_FATAL = 230,
 	CONST_ME_DODGE = 231,
 	CONST_ME_HOURGLASS = 232,
-	CONST_ME_DAZZLING = 233,
-	CONST_ME_SPARKLING = 234,
+	// 233-234 are empty
 	CONST_ME_FERUMBRAS_1 = 235,
 	CONST_ME_GAZHARAGOTH = 236,
 	CONST_ME_MAD_MAGE = 237,
@@ -234,9 +263,7 @@ enum MagicEffectClasses : uint16_t {
 	CONST_ME_DIVINE_EMPOWERMENT = 246, // Permanent
 	CONST_ME_WATER_FLOATING_THRASH = 247,
 
-	CONST_ME_AGONY = 249,
-
-	CONST_ME_LAST = CONST_ME_AGONY
+	CONST_ME_LAST = CONST_ME_DIVINE_DAZZLE,
 };
 
 enum ShootType_t : uint8_t {
@@ -404,11 +431,8 @@ enum TextColor_t : uint8_t {
 	TEXTCOLOR_BLUE = 5,
 	TEXTCOLOR_LIGHTGREEN = 30,
 	TEXTCOLOR_LIGHTBLUE = 35,
-	TEXTCOLOR_DARKBROWN = 78,
-	TEXTCOLOR_DARKGREY = 86,
 	TEXTCOLOR_MAYABLUE = 95,
 	TEXTCOLOR_DARKRED = 108,
-	TEXTCOLOR_NEUTRALDAMAGE = 109,
 	TEXTCOLOR_LIGHTGREY = 129,
 	TEXTCOLOR_SKYBLUE = 143,
 	TEXTCOLOR_PURPLE = 154,
@@ -416,7 +440,6 @@ enum TextColor_t : uint8_t {
 	TEXTCOLOR_RED = 180,
 	TEXTCOLOR_PASTELRED = 194,
 	TEXTCOLOR_ORANGE = 198,
-	TEXTCOLOR_LIGHTPURPLE = 199,
 	TEXTCOLOR_YELLOW = 210,
 	TEXTCOLOR_WHITE_EXP = 215,
 	TEXTCOLOR_NONE = 255,
@@ -649,14 +672,8 @@ enum ItemID_t : uint16_t {
 	ITEM_FORGE_SLIVER = 37109,
 	ITEM_FORGE_CORE = 37110,
 	ITEM_EXALTATION_CHEST = 37561,
-	ITEM_PODIUM_OF_RENOWN1 = 35973,
-	ITEM_PODIUM_OF_RENOWN2 = 35974,
 	ITEM_PODIUM_OF_VIGOUR = 38707,
-	ITEM_PRIMAL_POD = 39176,
 	ITEM_DIVINE_EMPOWERMENT = 40450,
-
-	ITEM_BATHTUB_FILLED = 26077,
-	ITEM_BATHTUB_FILLED_NOTMOVABLE = 26100,
 
 	ITEM_NONE = 0
 };
@@ -743,45 +760,4 @@ const phmap::flat_hash_map<Blessings_t, std::string> BlessingNames = {
 	{ HEARTH_OF_THE_MOUNTAIN, "Heart of the Mountain" },
 };
 
-enum BedItemPart_t : uint8_t {
-	BED_NONE_PART,
-	BED_PILLOW_PART,
-	BED_BLANKET_PART,
-};
-
-enum class AttrSubId_t {
-	None,
-	TrainParty,
-	ProtectParty,
-	EnchantParty,
-	JeanPierreMagic,
-	JeanPierreMelee,
-	JeanPierreDistance,
-	JeanPierreDefense,
-	JeanPierreFishing,
-	BloodRageProtector,
-	Sharpshooter,
-};
-
-enum Concoction_t : uint16_t {
-	KooldownAid = 36723,
-	StaminaExtension = 36725,
-	StrikeEnhancement = 36724,
-	CharmUpgrade = 36726,
-	WealthDuplex = 36727,
-	BestiaryBetterment = 36728,
-	FireResilience = 36729,
-	IceResilience = 36730,
-	EarthResilience = 36731,
-	EnergyResilience = 36732,
-	HolyResilience = 36733,
-	DeathResilience = 36734,
-	PhysicalResilience = 36735,
-	FireAmplification = 36736,
-	IceAmplification = 36737,
-	EarthAmplification = 36738,
-	EnergyAmplification = 36739,
-	HolyAmplification = 36740,
-	DeathAmplification = 36741,
-	PhysicalAmplification = 36742,
-};
+#endif // SRC_UTILS_UTILS_DEFINITIONS_HPP_

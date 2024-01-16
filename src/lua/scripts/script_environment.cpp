@@ -9,8 +9,9 @@
 
 #include "pch.hpp"
 
-#include "game/game.hpp"
-#include "lua/scripts/luascript.hpp"
+#include "declarations.hpp"
+#include "game/game.h"
+#include "lua/scripts/luascript.h"
 #include "lua/scripts/script_environment.hpp"
 
 ScriptEnvironment::ScriptEnvironment() {
@@ -32,7 +33,10 @@ void ScriptEnvironment::resetEnv() {
 	auto pair = tempItems.equal_range(this);
 	auto it = pair.first;
 	while (it != pair.second) {
-		std::shared_ptr<Item> item = it->second;
+		Item* item = it->second;
+		if (item->getParent() == VirtualCylinder::virtualCylinder) {
+			g_game().ReleaseItem(item);
+		}
 		it = tempItems.erase(it);
 	}
 }
@@ -58,17 +62,17 @@ void ScriptEnvironment::getEventInfo(int32_t &retScriptId, LuaScriptInterface*&r
 	retTimerEvent = this->timerEvent;
 }
 
-uint32_t ScriptEnvironment::addThing(std::shared_ptr<Thing> thing) {
+uint32_t ScriptEnvironment::addThing(Thing* thing) {
 	if (!thing || thing->isRemoved()) {
 		return 0;
 	}
 
-	std::shared_ptr<Creature> creature = thing->getCreature();
+	Creature* creature = thing->getCreature();
 	if (creature) {
 		return creature->getID();
 	}
 
-	std::shared_ptr<Item> item = thing->getItem();
+	Item* item = thing->getItem();
 	if (item && item->hasAttribute(ItemAttribute_t::UNIQUEID)) {
 		return item->getAttribute<uint32_t>(ItemAttribute_t::UNIQUEID);
 	}
@@ -83,20 +87,20 @@ uint32_t ScriptEnvironment::addThing(std::shared_ptr<Thing> thing) {
 	return lastUID;
 }
 
-void ScriptEnvironment::insertItem(uint32_t uid, std::shared_ptr<Item> item) {
+void ScriptEnvironment::insertItem(uint32_t uid, Item* item) {
 	auto result = localMap.emplace(uid, item);
 	if (!result.second) {
-		g_logger().error("Thing uid already taken: {}", uid);
+		SPDLOG_ERROR("Thing uid already taken: {}", uid);
 	}
 }
 
-std::shared_ptr<Thing> ScriptEnvironment::getThingByUID(uint32_t uid) {
+Thing* ScriptEnvironment::getThingByUID(uint32_t uid) {
 	if (uid >= 0x10000000) {
 		return g_game().getCreatureByID(uid);
 	}
 
 	if (uid <= std::numeric_limits<uint16_t>::max()) {
-		std::shared_ptr<Item> item = g_game().getUniqueItem(static_cast<uint16_t>(uid));
+		Item* item = g_game().getUniqueItem(static_cast<uint16_t>(uid));
 		if (item && !item->isRemoved()) {
 			return item;
 		}
@@ -105,7 +109,7 @@ std::shared_ptr<Thing> ScriptEnvironment::getThingByUID(uint32_t uid) {
 
 	auto it = localMap.find(uid);
 	if (it != localMap.end()) {
-		std::shared_ptr<Item> item = it->second;
+		Item* item = it->second;
 		if (!item->isRemoved()) {
 			return item;
 		}
@@ -113,16 +117,16 @@ std::shared_ptr<Thing> ScriptEnvironment::getThingByUID(uint32_t uid) {
 	return nullptr;
 }
 
-std::shared_ptr<Item> ScriptEnvironment::getItemByUID(uint32_t uid) {
-	std::shared_ptr<Thing> thing = getThingByUID(uid);
+Item* ScriptEnvironment::getItemByUID(uint32_t uid) {
+	Thing* thing = getThingByUID(uid);
 	if (!thing) {
 		return nullptr;
 	}
 	return thing->getItem();
 }
 
-std::shared_ptr<Container> ScriptEnvironment::getContainerByUID(uint32_t uid) {
-	std::shared_ptr<Item> item = getItemByUID(uid);
+Container* ScriptEnvironment::getContainerByUID(uint32_t uid) {
+	Item* item = getItemByUID(uid);
 	if (!item) {
 		return nullptr;
 	}
@@ -141,11 +145,11 @@ void ScriptEnvironment::removeItemByUID(uint32_t uid) {
 	}
 }
 
-void ScriptEnvironment::addTempItem(std::shared_ptr<Item> item) {
+void ScriptEnvironment::addTempItem(Item* item) {
 	tempItems.emplace(this, item);
 }
 
-void ScriptEnvironment::removeTempItem(std::shared_ptr<Item> item) {
+void ScriptEnvironment::removeTempItem(Item* item) {
 	for (auto it = tempItems.begin(), end = tempItems.end(); it != end; ++it) {
 		if (it->second == item) {
 			tempItems.erase(it);

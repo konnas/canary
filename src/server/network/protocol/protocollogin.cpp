@@ -9,30 +9,30 @@
 
 #include "pch.hpp"
 
-#include "server/network/protocol/protocollogin.hpp"
-#include "server/network/message/outputmessage.hpp"
-#include "game/scheduling/dispatcher.hpp"
-#include "account/account.hpp"
-#include "io/iologindata.hpp"
-#include "creatures/players/management/ban.hpp"
-#include "game/game.hpp"
+#include "server/network/protocol/protocollogin.h"
+#include "server/network/message/outputmessage.h"
+#include "game/scheduling/tasks.h"
+#include "creatures/players/account/account.hpp"
+#include "io/iologindata.h"
+#include "creatures/players/management/ban.h"
+#include "game/game.h"
 #include "core.hpp"
 
 void ProtocolLogin::disconnectClient(const std::string &message) {
 	auto output = OutputMessagePool::getOutputMessage();
 
 	output->addByte(0x0B);
-	output->addString(message, "ProtocolLogin::disconnectClient - message");
+	output->addString(message);
 	send(output);
 
 	disconnect();
 }
 
-void ProtocolLogin::getCharacterList(const std::string &accountDescriptor, const std::string &password) {
-	account::Account account(accountDescriptor);
+void ProtocolLogin::getCharacterList(const std::string &accountIdentifier, const std::string &password) {
+	account::Account account;
 	account.setProtocolCompat(oldProtocol);
 
-	if (oldProtocol && !g_configManager().getBoolean(OLD_PROTOCOL, __FUNCTION__)) {
+	if (oldProtocol && !g_configManager().getBoolean(OLD_PROTOCOL)) {
 		disconnectClient(fmt::format("Only protocol version {}.{} is allowed.", CLIENT_VERSION_UPPER, CLIENT_VERSION_LOWER));
 		return;
 	} else if (!oldProtocol) {
@@ -40,15 +40,18 @@ void ProtocolLogin::getCharacterList(const std::string &accountDescriptor, const
 		return;
 	}
 
-	if (account.load() != account::ERROR_NO || !account.authenticate(password)) {
+	if (!IOLoginData::authenticateAccountPassword(accountIdentifier, password, &account)) {
 		std::ostringstream ss;
 		ss << (oldProtocol ? "Username" : "Email") << " or password is not correct.";
 		disconnectClient(ss.str());
 		return;
 	}
 
+	// Update premium days
+	Game::updatePremium(account);
+
 	auto output = OutputMessagePool::getOutputMessage();
-	const std::string &motd = g_configManager().getString(SERVER_MOTD, __FUNCTION__);
+	const std::string &motd = g_configManager().getString(SERVER_MOTD);
 	if (!motd.empty()) {
 		// Add MOTD
 		output->addByte(0x14);
@@ -56,43 +59,46 @@ void ProtocolLogin::getCharacterList(const std::string &accountDescriptor, const
 		std::ostringstream ss;
 		ss << g_game().getMotdNum() << "\n"
 		   << motd;
-		output->addString(ss.str(), "ProtocolLogin::getCharacterList - ss.str()");
+		output->addString(ss.str());
 	}
 
 	// Add session key
 	output->addByte(0x28);
-	output->addString(accountDescriptor + "\n" + password, "ProtocolLogin::getCharacterList - accountDescriptor + password");
+	output->addString(accountIdentifier + "\n" + password);
 
 	// Add char list
-	auto [players, result] = account.getAccountPlayers();
-	if (account::ERROR_NO != result) {
-		g_logger().warn("Account[{}] failed to load players!", account.getID());
-	}
-
+	std::vector<account::Player> players;
+	account.GetAccountPlayers(&players);
 	output->addByte(0x64);
 
 	output->addByte(1); // number of worlds
 
 	output->addByte(0); // world id
-	output->addString(g_configManager().getString(SERVER_NAME, __FUNCTION__), "ProtocolLogin::getCharacterList - _configManager().getString(SERVER_NAME)");
-	output->addString(g_configManager().getString(IP, __FUNCTION__), "ProtocolLogin::getCharacterList - g_configManager().getString(IP)");
+	output->addString(g_configManager().getString(SERVER_NAME));
+	output->addString(g_configManager().getString(IP));
 
-	output->add<uint16_t>(g_configManager().getNumber(GAME_PORT, __FUNCTION__));
+	output->add<uint16_t>(g_configManager().getShortNumber(GAME_PORT));
 
 	output->addByte(0);
 
 	uint8_t size = std::min<size_t>(std::numeric_limits<uint8_t>::max(), players.size());
 	output->addByte(size);
-	for (const auto &[name, deletion] : players) {
+	for (uint8_t i = 0; i < size; i++) {
 		output->addByte(0);
-		output->addString(name, "ProtocolLogin::getCharacterList - name");
+		output->addString(players[i].name);
 	}
 
 	// Add premium days
 	output->addByte(0);
-
-	output->addByte(account.getPremiumRemainingDays() > 0);
-	output->add<uint32_t>(account.getPremiumLastDay());
+	if (g_configManager().getBoolean(FREE_PREMIUM)) {
+		output->addByte(1);
+		output->add<uint32_t>(0);
+	} else {
+		uint32_t days;
+		account.GetPremiumRemaningDays(&days);
+		output->addByte(0);
+		output->add<uint32_t>(time(nullptr) + (days * 86400));
+	}
 
 	send(output);
 
@@ -121,7 +127,7 @@ void ProtocolLogin::onRecvFirstMessage(NetworkMessage &msg) {
 	 */
 
 	if (!Protocol::RSA_decrypt(msg)) {
-		g_logger().warn("[ProtocolLogin::onRecvFirstMessage] - RSA Decrypt Failed");
+		SPDLOG_WARN("[ProtocolLogin::onRecvFirstMessage] - RSA Decrypt Failed");
 		disconnect();
 		return;
 	}
@@ -160,8 +166,8 @@ void ProtocolLogin::onRecvFirstMessage(NetworkMessage &msg) {
 		return;
 	}
 
-	std::string accountDescriptor = msg.getString();
-	if (accountDescriptor.empty()) {
+	std::string accountIdentifier = msg.getString();
+	if (accountIdentifier.empty()) {
 		std::ostringstream ss;
 		ss << "Invalid " << (oldProtocol ? "username" : "email") << ".";
 		disconnectClient(ss.str());
@@ -175,5 +181,5 @@ void ProtocolLogin::onRecvFirstMessage(NetworkMessage &msg) {
 	}
 
 	auto thisPtr = std::static_pointer_cast<ProtocolLogin>(shared_from_this());
-	g_dispatcher().addEvent(std::bind(&ProtocolLogin::getCharacterList, thisPtr, accountDescriptor, password), "ProtocolLogin::getCharacterList");
+	g_dispatcher().addTask(createTask(std::bind(&ProtocolLogin::getCharacterList, thisPtr, accountIdentifier, password)));
 }

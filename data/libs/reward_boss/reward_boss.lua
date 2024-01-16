@@ -1,6 +1,6 @@
 -- Unused function
 function PushValues(buffer, sep, ...)
-	local argv = { ... }
+	local argv = {...}
 	local argc = #argv
 	for k, v in ipairs(argv) do
 		table.insert(buffer, v)
@@ -11,7 +11,7 @@ function PushValues(buffer, sep, ...)
 end
 
 function PushSeparated(buffer, sep, ...)
-	local argv = { ... }
+	local argv = {...}
 	local argc = #argv
 	for k, v in ipairs(argv) do
 		table.insert(buffer, v)
@@ -52,58 +52,39 @@ function InsertItems(buffer, info, parent, items)
 	return info.running - start
 end
 
-function Container:addRewardBossItems(itemList)
-	for itemId, lootInfo in pairs(itemList) do
-		local iType = ItemType(itemId)
-		if iType then
-			local itemCount = lootInfo.count
-			local charges = iType:getCharges()
-			if charges > 0 then
-				itemCount = charges
-				logger.debug("Adding item with 'id' to the reward container, item charges {}", iType:getId(), charges)
-			end
-			if iType:isStackable() or iType:getCharges() ~= 0 then
-				self:addItem(itemId, itemCount, INDEX_WHEREEVER, FLAG_NOLIMIT)
-			else
-				for i = 1, itemCount do
-					self:addItem(itemId, 1, INDEX_WHEREEVER, FLAG_NOLIMIT)
-				end
-			end
-		end
-	end
-end
-
 function InsertRewardItems(playerGuid, timestamp, itemList)
-	local maxSidQueryResult = db.query("select max(`sid`) as max_sid from `player_rewards` where player_id = " .. playerGuid .. ";")
-	local bagSid = (Result.getNumber(maxSidQueryResult, "max_sid") or 0) + 1
-	local nextSid = bagSid + 1
-	local buffer = { "INSERT INTO `player_rewards` (`player_id`, `pid`, `sid`, `itemtype`, `count`, `attributes`) VALUES" }
+	local maxSidQueryResult = db.query('select max(`sid`) as max_sid from `player_rewards` where player_id = '..playerGuid..';')
+	local bagSid = (Result.getDataInt(maxSidQueryResult, 'max_sid') or 0) + 1;
+	local nextSid = bagSid + 1;
+	local buffer = {'INSERT INTO `player_rewards` (`player_id`, `pid`, `sid`, `itemtype`, `count`, `attributes`) VALUES'}
 	local info = {
 		playerGuid = playerGuid,
-		running = nextSid,
+		running = nextSid
 	}
 	local bag = Game.createItem(ITEM_REWARD_CONTAINER)
 	bag:setAttribute(ITEM_ATTRIBUTE_DATE, timestamp)
 	if itemList then
-		bag:addRewardBossItems(itemList)
+		for _, p in ipairs(itemList) do
+			bag:addItem(p[1], p[2])
+		end
 	end
-	local total = InsertItems(buffer, info, bagSid, { bag })
+	local total = InsertItems(buffer, info, bagSid, {bag})
 
 	if total ~= 0 then
-		local insertItemsQuery = table.concat(buffer):sub(1, -2) .. ";"
+		local insertItemsQuery = table.concat(buffer):sub(1, -2)..";";
 		db.query(insertItemsQuery)
 	end
 end
 
 function GetPlayerStats(bossId, playerGuid, autocreate)
-	local ret = _G.GlobalBosses[bossId][playerGuid]
+	local ret = GlobalBosses[bossId][playerGuid]
 	if not ret and autocreate then
 		ret = {
 			bossId = bossId,
 			damageIn = 0, -- damage taken from the boss
 			healing = 0, -- healing (other players) done
 		}
-		_G.GlobalBosses[bossId][playerGuid] = ret
+		GlobalBosses[bossId][playerGuid] = ret
 		return ret
 	end
 	return ret
@@ -115,10 +96,7 @@ function ResetAndSetTargetList(creature)
 	end
 
 	local bossId = creature:getId()
-	local info = _G.GlobalBosses[bossId]
-	if not info then
-		return
-	end
+	local info = GlobalBosses[bossId]
 	-- Reset all players' status
 	for _, player in pairs(info) do
 		player.active = false

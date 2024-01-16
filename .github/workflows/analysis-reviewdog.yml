@@ -5,15 +5,32 @@ on:
   pull_request:
 
 jobs:
+
+  cppcheck:
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Check out code.
+        uses: actions/checkout@main
+
+      - name: Setup reviewdog
+        uses: reviewdog/action-setup@v1.0.3
+
+      - name: Setup cppcheck
+        run: sudo apt-get update && sudo apt-get install -y cppcheck
+
+      - name: cppcheck
+        env:
+          REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          cppcheck --version
+          reviewdog -reporter=github-pr-check -runners=cppcheck
+
+
   luac:
     runs-on: ubuntu-latest
     steps:
-      - name: Cancel Previous Runs
-        if: github.ref != 'refs/heads/main'
-        uses: fkirc/skip-duplicate-actions@master
-        with:
-          concurrent_skipping: "same_content"
-          cancel_others: true
 
       - name: Check out code.
         uses: actions/checkout@main
@@ -32,9 +49,11 @@ jobs:
           luac -v
           reviewdog -reporter=github-pr-check -runners=luac
 
+
   luacheck:
     runs-on: ubuntu-latest
     steps:
+
       - name: Check out code.
         uses: actions/checkout@main
 
@@ -52,9 +71,11 @@ jobs:
           cd "$GITHUB_WORKSPACE"
           reviewdog -reporter=github-pr-check -runners=luacheck
 
+
   shellcheck:
     runs-on: ubuntu-latest
     steps:
+
       - name: Check out code.
         uses: actions/checkout@main
 
@@ -63,12 +84,14 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           reporter: github-pr-check
-          pattern: "*.sh"
-          exclude: "./.git/*"
+          pattern: '*.sh'
+          exclude: './.git/*'
+
 
   xmllint:
     runs-on: ubuntu-latest
     steps:
+
       - name: Check out code.
         uses: actions/checkout@main
 
@@ -86,9 +109,11 @@ jobs:
           xmllint --version
           reviewdog -reporter=github-pr-check -runners=xmllint
 
+
   yamllint:
     runs-on: ubuntu-latest
     steps:
+
       - name: Check out code.
         uses: actions/checkout@main
 
@@ -98,9 +123,11 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           reporter: github-pr-check
 
+
   hadolint:
     runs-on: ubuntu-latest
     steps:
+
       - name: Check out code
         uses: actions/checkout@main
 
@@ -112,6 +139,7 @@ jobs:
   actionlint:
     runs-on: ubuntu-latest
     steps:
+
       - name: Check out code
         uses: actions/checkout@main
 

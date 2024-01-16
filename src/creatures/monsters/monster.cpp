@@ -9,38 +9,35 @@
 
 #include "pch.hpp"
 
-#include "creatures/monsters/monster.hpp"
-#include "creatures/combat/spells.hpp"
-#include "creatures/players/wheel/player_wheel.hpp"
-#include "game/game.hpp"
-#include "game/scheduling/dispatcher.hpp"
-#include "lua/callbacks/event_callback.hpp"
-#include "lua/callbacks/events_callbacks.hpp"
-#include "map/spectators.hpp"
+#include "creatures/monsters/monster.h"
+#include "creatures/combat/spells.h"
+#include "game/game.h"
+#include "game/scheduling/tasks.h"
+#include "lua/creature/events.h"
 
 int32_t Monster::despawnRange;
 int32_t Monster::despawnRadius;
 
 uint32_t Monster::monsterAutoID = 0x50000001;
 
-std::shared_ptr<Monster> Monster::createMonster(const std::string &name) {
-	const auto mType = g_monsters().getMonsterType(name);
+Monster* Monster::createMonster(const std::string &name) {
+	MonsterType* mType = g_monsters().getMonsterType(name);
 	if (!mType) {
 		return nullptr;
 	}
-	return std::make_shared<Monster>(mType);
+	return new Monster(mType);
 }
 
-Monster::Monster(const std::shared_ptr<MonsterType> mType) :
+Monster::Monster(MonsterType* mType) :
 	Creature(),
 	strDescription(asLowerCaseString(mType->nameDescription)),
 	mType(mType) {
 	defaultOutfit = mType->info.outfit;
 	currentOutfit = mType->info.outfit;
 	skull = mType->info.skull;
-	health = mType->info.health * mType->getHealthMultiplier();
-	healthMax = mType->info.healthMax * mType->getHealthMultiplier();
-	runAwayHealth = mType->info.runAwayHealth * mType->getHealthMultiplier();
+	float multiplier = g_configManager().getFloat(RATE_MONSTER_HEALTH);
+	health = mType->info.health * multiplier;
+	healthMax = mType->info.healthMax * multiplier;
 	baseSpeed = mType->getBaseSpeed();
 	internalLight = mType->info.light;
 	hiddenHealth = mType->info.hiddenHealth;
@@ -49,19 +46,24 @@ Monster::Monster(const std::shared_ptr<MonsterType> mType) :
 	// Register creature events
 	for (const std::string &scriptName : mType->info.scripts) {
 		if (!registerCreatureEvent(scriptName)) {
-			g_logger().warn("[Monster::Monster] - "
-							"Unknown event name: {}",
-							scriptName);
+			SPDLOG_WARN("[Monster::Monster] - "
+						"Unknown event name: {}",
+						scriptName);
 		}
 	}
 }
 
+Monster::~Monster() {
+	clearTargetList();
+	clearFriendList();
+}
+
 void Monster::addList() {
-	g_game().addMonster(static_self_cast<Monster>());
+	g_game().addMonster(this);
 }
 
 void Monster::removeList() {
-	g_game().removeMonster(static_self_cast<Monster>());
+	g_game().removeMonster(this);
 }
 
 bool Monster::canWalkOnFieldType(CombatType_t combatType) const {
@@ -77,13 +79,12 @@ bool Monster::canWalkOnFieldType(CombatType_t combatType) const {
 	}
 }
 
-int32_t Monster::getReflectPercent(CombatType_t reflectType, bool useCharges) const {
-	int32_t result = Creature::getReflectPercent(reflectType, useCharges);
+uint32_t Monster::getReflectValue(CombatType_t reflectType) const {
 	auto it = mType->info.reflectMap.find(reflectType);
 	if (it != mType->info.reflectMap.end()) {
-		result += it->second;
+		return it->second;
 	}
-	return result;
+	return 0;
 }
 
 uint32_t Monster::getHealingCombatValue(CombatType_t healingType) const {
@@ -99,16 +100,16 @@ void Monster::onAttackedCreatureDisappear(bool) {
 	extraMeleeAttack = true;
 }
 
-void Monster::onCreatureAppear(std::shared_ptr<Creature> creature, bool isLogin) {
+void Monster::onCreatureAppear(Creature* creature, bool isLogin) {
 	Creature::onCreatureAppear(creature, isLogin);
 
 	if (mType->info.creatureAppearEvent != -1) {
 		// onCreatureAppear(self, creature)
 		LuaScriptInterface* scriptInterface = mType->info.scriptInterface;
 		if (!scriptInterface->reserveScriptEnv()) {
-			g_logger().error("[Monster::onCreatureAppear - Monster {} creature {}] "
-							 "Call stack overflow. Too many lua script calls being nested.",
-							 getName(), creature->getName());
+			SPDLOG_ERROR("[Monster::onCreatureAppear - Monster {} creature {}] "
+						 "Call stack overflow. Too many lua script calls being nested.",
+						 getName(), creature->getName());
 			return;
 		}
 
@@ -118,7 +119,7 @@ void Monster::onCreatureAppear(std::shared_ptr<Creature> creature, bool isLogin)
 		lua_State* L = scriptInterface->getLuaState();
 		scriptInterface->pushFunction(mType->info.creatureAppearEvent);
 
-		LuaScriptInterface::pushUserdata<Monster>(L, getMonster());
+		LuaScriptInterface::pushUserdata<Monster>(L, this);
 		LuaScriptInterface::setMetatable(L, -1, "Monster");
 
 		LuaScriptInterface::pushUserdata<Creature>(L, creature);
@@ -129,7 +130,7 @@ void Monster::onCreatureAppear(std::shared_ptr<Creature> creature, bool isLogin)
 		}
 	}
 
-	if (creature.get() == this) {
+	if (creature == this) {
 		updateTargetList();
 		updateIdleStatus();
 	} else {
@@ -137,16 +138,16 @@ void Monster::onCreatureAppear(std::shared_ptr<Creature> creature, bool isLogin)
 	}
 }
 
-void Monster::onRemoveCreature(std::shared_ptr<Creature> creature, bool isLogout) {
+void Monster::onRemoveCreature(Creature* creature, bool isLogout) {
 	Creature::onRemoveCreature(creature, isLogout);
 
 	if (mType->info.creatureDisappearEvent != -1) {
 		// onCreatureDisappear(self, creature)
 		LuaScriptInterface* scriptInterface = mType->info.scriptInterface;
 		if (!scriptInterface->reserveScriptEnv()) {
-			g_logger().error("[Monster::onCreatureDisappear - Monster {} creature {}] "
-							 "Call stack overflow. Too many lua script calls being nested.",
-							 getName(), creature->getName());
+			SPDLOG_ERROR("[Monster::onCreatureDisappear - Monster {} creature {}] "
+						 "Call stack overflow. Too many lua script calls being nested.",
+						 getName(), creature->getName());
 			return;
 		}
 
@@ -156,7 +157,7 @@ void Monster::onRemoveCreature(std::shared_ptr<Creature> creature, bool isLogout
 		lua_State* L = scriptInterface->getLuaState();
 		scriptInterface->pushFunction(mType->info.creatureDisappearEvent);
 
-		LuaScriptInterface::pushUserdata<Monster>(L, getMonster());
+		LuaScriptInterface::pushUserdata<Monster>(L, this);
 		LuaScriptInterface::setMetatable(L, -1, "Monster");
 
 		LuaScriptInterface::pushUserdata<Creature>(L, creature);
@@ -167,7 +168,7 @@ void Monster::onRemoveCreature(std::shared_ptr<Creature> creature, bool isLogout
 		}
 	}
 
-	if (creature.get() == this) {
+	if (creature == this) {
 		if (spawnMonster) {
 			spawnMonster->startSpawnMonsterCheck();
 		}
@@ -178,16 +179,16 @@ void Monster::onRemoveCreature(std::shared_ptr<Creature> creature, bool isLogout
 	}
 }
 
-void Monster::onCreatureMove(const std::shared_ptr<Creature> &creature, const std::shared_ptr<Tile> &newTile, const Position &newPos, const std::shared_ptr<Tile> &oldTile, const Position &oldPos, bool teleport) {
+void Monster::onCreatureMove(Creature* creature, const Tile* newTile, const Position &newPos, const Tile* oldTile, const Position &oldPos, bool teleport) {
 	Creature::onCreatureMove(creature, newTile, newPos, oldTile, oldPos, teleport);
 
 	if (mType->info.creatureMoveEvent != -1) {
 		// onCreatureMove(self, creature, oldPosition, newPosition)
 		LuaScriptInterface* scriptInterface = mType->info.scriptInterface;
 		if (!scriptInterface->reserveScriptEnv()) {
-			g_logger().error("[Monster::onCreatureMove - Monster {} creature {}] "
-							 "Call stack overflow. Too many lua script calls being nested.",
-							 getName(), creature->getName());
+			SPDLOG_ERROR("[Monster::onCreatureMove - Monster {} creature {}] "
+						 "Call stack overflow. Too many lua script calls being nested.",
+						 getName(), creature->getName());
 			return;
 		}
 
@@ -197,7 +198,7 @@ void Monster::onCreatureMove(const std::shared_ptr<Creature> &creature, const st
 		lua_State* L = scriptInterface->getLuaState();
 		scriptInterface->pushFunction(mType->info.creatureMoveEvent);
 
-		LuaScriptInterface::pushUserdata<Monster>(L, getMonster());
+		LuaScriptInterface::pushUserdata<Monster>(L, this);
 		LuaScriptInterface::setMetatable(L, -1, "Monster");
 
 		LuaScriptInterface::pushUserdata<Creature>(L, creature);
@@ -211,7 +212,7 @@ void Monster::onCreatureMove(const std::shared_ptr<Creature> &creature, const st
 		}
 	}
 
-	if (creature.get() == this) {
+	if (creature == this) {
 		updateTargetList();
 		updateIdleStatus();
 	} else {
@@ -227,7 +228,7 @@ void Monster::onCreatureMove(const std::shared_ptr<Creature> &creature, const st
 		updateIdleStatus();
 
 		if (!isSummon()) {
-			if (const auto &followCreature = getFollowCreature()) {
+			if (followCreature) {
 				const Position &followPosition = followCreature->getPosition();
 				const Position &pos = getPosition();
 
@@ -235,11 +236,12 @@ void Monster::onCreatureMove(const std::shared_ptr<Creature> &creature, const st
 				int32_t offset_y = Position::getDistanceY(followPosition, pos);
 				if ((offset_x > 1 || offset_y > 1) && mType->info.changeTargetChance > 0) {
 					Direction dir = getDirectionTo(pos, followPosition);
-					const auto &checkPosition = getNextPosition(dir, pos);
+					const Position &checkPosition = getNextPosition(dir, pos);
 
-					if (const auto &nextTile = g_game().map.getTile(checkPosition)) {
-						const auto &topCreature = nextTile->getTopCreature();
-						if (followCreature != topCreature && isOpponent(topCreature)) {
+					const Tile* nextTile = g_game().map.getTile(checkPosition);
+					if (nextTile) {
+						Creature* topCreature = nextTile->getTopCreature();
+						if (topCreature && followCreature != topCreature && isOpponent(topCreature)) {
 							selectTarget(topCreature);
 						}
 					}
@@ -252,16 +254,16 @@ void Monster::onCreatureMove(const std::shared_ptr<Creature> &creature, const st
 	}
 }
 
-void Monster::onCreatureSay(std::shared_ptr<Creature> creature, SpeakClasses type, const std::string &text) {
+void Monster::onCreatureSay(Creature* creature, SpeakClasses type, const std::string &text) {
 	Creature::onCreatureSay(creature, type, text);
 
 	if (mType->info.creatureSayEvent != -1) {
 		// onCreatureSay(self, creature, type, message)
 		LuaScriptInterface* scriptInterface = mType->info.scriptInterface;
 		if (!scriptInterface->reserveScriptEnv()) {
-			g_logger().error("Monster {} creature {}] Call stack overflow. Too many lua "
-							 "script calls being nested.",
-							 getName(), creature->getName());
+			SPDLOG_ERROR("Monster {} creature {}] Call stack overflow. Too many lua "
+						 "script calls being nested.",
+						 getName(), creature->getName());
 			return;
 		}
 
@@ -271,7 +273,7 @@ void Monster::onCreatureSay(std::shared_ptr<Creature> creature, SpeakClasses typ
 		lua_State* L = scriptInterface->getLuaState();
 		scriptInterface->pushFunction(mType->info.creatureSayEvent);
 
-		LuaScriptInterface::pushUserdata<Monster>(L, getMonster());
+		LuaScriptInterface::pushUserdata<Monster>(L, this);
 		LuaScriptInterface::setMetatable(L, -1, "Monster");
 
 		LuaScriptInterface::pushUserdata<Creature>(L, creature);
@@ -284,85 +286,99 @@ void Monster::onCreatureSay(std::shared_ptr<Creature> creature, SpeakClasses typ
 	}
 }
 
-void Monster::addFriend(const std::shared_ptr<Creature> &creature) {
-	assert(creature.get() != this);
-	friendList.try_emplace(creature->getID(), creature);
+void Monster::addFriend(Creature* creature) {
+	assert(creature != this);
+	auto result = friendList.insert(creature);
+	if (result.second) {
+		creature->incrementReferenceCounter();
+	}
 }
 
-void Monster::removeFriend(const std::shared_ptr<Creature> &creature) {
-	std::erase_if(friendList, [id = creature->getID()](const auto &it) {
-		const auto &target = it.second.lock();
-		return !target || target->getID() == id;
-	});
+void Monster::removeFriend(Creature* creature) {
+	auto it = friendList.find(creature);
+	if (it != friendList.end()) {
+		creature->decrementReferenceCounter();
+		friendList.erase(it);
+	}
 }
 
-bool Monster::addTarget(const std::shared_ptr<Creature> &creature, bool pushFront /* = false*/) {
-	assert(creature.get() != this);
-
-	const auto &it = getTargetIterator(creature);
-	if (it != targetList.end()) {
-		return false;
+void Monster::addTarget(Creature* creature, bool pushFront /* = false*/) {
+	assert(creature != this);
+	if (std::find(targetList.begin(), targetList.end(), creature) == targetList.end()) {
+		creature->incrementReferenceCounter();
+		if (pushFront) {
+			targetList.push_front(creature);
+		} else {
+			targetList.push_back(creature);
+		}
+		if (!master && getFaction() != FACTION_DEFAULT && creature->getPlayer())
+			totalPlayersOnScreen++;
 	}
-
-	if (pushFront) {
-		targetList.emplace_front(creature);
-	} else {
-		targetList.emplace_back(creature);
-	}
-
-	if (!getMaster() && getFaction() != FACTION_DEFAULT && creature->getPlayer()) {
-		totalPlayersOnScreen++;
-	}
-
-	return true;
 }
 
-bool Monster::removeTarget(const std::shared_ptr<Creature> &creature) {
+void Monster::removeTarget(Creature* creature) {
 	if (!creature) {
-		return false;
+		return;
 	}
 
-	const auto &it = getTargetIterator(creature);
-	if (it == targetList.end()) {
-		return false;
+	auto it = std::find(targetList.begin(), targetList.end(), creature);
+	if (it != targetList.end()) {
+		if (!master && getFaction() != FACTION_DEFAULT && creature->getPlayer()) {
+			totalPlayersOnScreen--;
+		}
+		creature->decrementReferenceCounter();
+		targetList.erase(it);
 	}
-
-	if (!getMaster() && getFaction() != FACTION_DEFAULT && creature->getPlayer()) {
-		totalPlayersOnScreen--;
-	}
-
-	targetList.erase(it);
-
-	return true;
 }
 
 void Monster::updateTargetList() {
-	std::erase_if(friendList, [this](const auto &it) {
-		const auto &target = it.second.lock();
-		return !target || target->getHealth() <= 0 || !canSee(target->getPosition());
-	});
+	auto friendIterator = friendList.begin();
+	while (friendIterator != friendList.end()) {
+		Creature* creature = *friendIterator;
+		if (creature->getHealth() <= 0 || !canSee(creature->getPosition())) {
+			creature->decrementReferenceCounter();
+			friendIterator = friendList.erase(friendIterator);
+		} else {
+			++friendIterator;
+		}
+	}
 
-	std::erase_if(targetList, [this](const std::weak_ptr<Creature> &ref) {
-		const auto &target = ref.lock();
-		return !target || target->getHealth() <= 0 || !canSee(target->getPosition());
-	});
+	auto targetIterator = targetList.begin();
+	while (targetIterator != targetList.end()) {
+		Creature* creature = *targetIterator;
+		if (creature->getHealth() <= 0 || !canSee(creature->getPosition())) {
+			creature->decrementReferenceCounter();
+			targetIterator = targetList.erase(targetIterator);
+		} else {
+			++targetIterator;
+		}
+	}
 
-	for (const auto &spectator : Spectators().find<Creature>(position, true)) {
-		if (spectator.get() != this && canSee(spectator->getPosition())) {
+	SpectatorHashSet spectators;
+	g_game().map.getSpectators(spectators, position, true);
+	spectators.erase(this);
+	for (Creature* spectator : spectators) {
+		if (canSee(spectator->getPosition())) {
 			onCreatureFound(spectator);
 		}
 	}
 }
 
 void Monster::clearTargetList() {
+	for (Creature* creature : targetList) {
+		creature->decrementReferenceCounter();
+	}
 	targetList.clear();
 }
 
 void Monster::clearFriendList() {
+	for (Creature* creature : friendList) {
+		creature->decrementReferenceCounter();
+	}
 	friendList.clear();
 }
 
-void Monster::onCreatureFound(std::shared_ptr<Creature> creature, bool pushFront /* = false*/) {
+void Monster::onCreatureFound(Creature* creature, bool pushFront /* = false*/) {
 	if (isFriend(creature)) {
 		addFriend(creature);
 	}
@@ -374,17 +390,20 @@ void Monster::onCreatureFound(std::shared_ptr<Creature> creature, bool pushFront
 	updateIdleStatus();
 }
 
-void Monster::onCreatureEnter(std::shared_ptr<Creature> creature) {
+void Monster::onCreatureEnter(Creature* creature) {
 	onCreatureFound(creature, true);
 }
 
-bool Monster::isFriend(const std::shared_ptr<Creature> &creature) const {
+bool Monster::isFriend(const Creature* creature) const {
 	if (isSummon() && getMaster()->getPlayer()) {
-		const auto &masterPlayer = getMaster()->getPlayer();
-		auto tmpPlayer = creature->getPlayer();
+		const Player* masterPlayer = getMaster()->getPlayer();
+		const Player* tmpPlayer = nullptr;
 
-		if (!tmpPlayer) {
-			const auto &creatureMaster = creature->getMaster();
+		if (creature->getPlayer()) {
+			tmpPlayer = creature->getPlayer();
+		} else {
+			const Creature* creatureMaster = creature->getMaster();
+
 			if (creatureMaster && creatureMaster->getPlayer()) {
 				tmpPlayer = creatureMaster->getPlayer();
 			}
@@ -393,36 +412,33 @@ bool Monster::isFriend(const std::shared_ptr<Creature> &creature) const {
 		if (tmpPlayer && (tmpPlayer == getMaster() || masterPlayer->isPartner(tmpPlayer))) {
 			return true;
 		}
-	}
-
-	return creature->getMonster() && !creature->isSummon();
-}
-
-bool Monster::isOpponent(const std::shared_ptr<Creature> &creature) const {
-	if (!creature) {
-		return false;
-	}
-
-	if (isSummon() && getMaster()->getPlayer()) {
-		return creature != getMaster();
-	}
-
-	if (creature->getPlayer() && creature->getPlayer()->hasFlag(PlayerFlags_t::IgnoredByMonsters)) {
-		return false;
-	}
-
-	if (getFaction() != FACTION_DEFAULT) {
-		return isEnemyFaction(creature->getFaction()) || creature->getFaction() == FACTION_PLAYER;
-	}
-
-	if ((creature->getPlayer()) || (creature->getMaster() && creature->getMaster()->getPlayer())) {
+	} else if (creature->getMonster() && !creature->isSummon()) {
 		return true;
 	}
 
 	return false;
 }
 
-void Monster::onCreatureLeave(std::shared_ptr<Creature> creature) {
+bool Monster::isOpponent(const Creature* creature) const {
+	if (isSummon() && getMaster()->getPlayer()) {
+		if (creature != getMaster()) {
+			return true;
+		}
+	} else if (creature->getPlayer() && creature->getPlayer()->hasFlag(PlayerFlags_t::IgnoredByMonsters)) {
+		return false;
+	} else {
+		if (getFaction() != FACTION_DEFAULT) {
+			return isEnemyFaction(creature->getFaction()) || creature->getFaction() == FACTION_PLAYER;
+		}
+		if ((creature->getPlayer()) || (creature->getMaster() && creature->getMaster()->getPlayer())) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void Monster::onCreatureLeave(Creature* creature) {
 	// update friendList
 	if (isFriend(creature)) {
 		removeFriend(creature);
@@ -458,13 +474,12 @@ bool Monster::searchTarget(TargetSearchType_t searchType /*= TARGETSEARCH_DEFAUL
 		}
 	}
 
-	std::vector<std::shared_ptr<Creature>> resultList;
+	std::list<Creature*> resultList;
 	const Position &myPos = getPosition();
 
-	for (const auto &cref : targetList) {
-		const auto &creature = cref.lock();
-		if (creature && isTarget(creature)) {
-			if ((static_self_cast<Monster>()->targetDistance == 1) || canUseAttack(myPos, creature)) {
+	for (Creature* creature : targetList) {
+		if (isTarget(creature)) {
+			if ((this->targetDistance == 1) || canUseAttack(myPos, creature)) {
 				resultList.push_back(creature);
 			}
 		}
@@ -474,7 +489,7 @@ bool Monster::searchTarget(TargetSearchType_t searchType /*= TARGETSEARCH_DEFAUL
 		return false;
 	}
 
-	std::shared_ptr<Creature> getTarget = nullptr;
+	Creature* getTarget = nullptr;
 
 	switch (searchType) {
 		case TARGETSEARCH_NEAREST: {
@@ -486,11 +501,10 @@ bool Monster::searchTarget(TargetSearchType_t searchType /*= TARGETSEARCH_DEFAUL
 				if (++it != resultList.end()) {
 					const Position &targetPosition = getTarget->getPosition();
 					int32_t minRange = std::max<int32_t>(Position::getDistanceX(myPos, targetPosition), Position::getDistanceY(myPos, targetPosition));
-					int32_t factionOffset = static_cast<int32_t>(getTarget->getFaction()) * 100;
 					do {
 						const Position &pos = (*it)->getPosition();
 
-						int32_t distance = std::max<int32_t>(Position::getDistanceX(myPos, pos), Position::getDistanceY(myPos, pos)) + factionOffset;
+						int32_t distance = std::max<int32_t>(Position::getDistanceX(myPos, pos), Position::getDistanceY(myPos, pos));
 						if (distance < minRange) {
 							getTarget = *it;
 							minRange = distance;
@@ -499,14 +513,13 @@ bool Monster::searchTarget(TargetSearchType_t searchType /*= TARGETSEARCH_DEFAUL
 				}
 			} else {
 				int32_t minRange = std::numeric_limits<int32_t>::max();
-				for (const auto &creature : getTargetList()) {
+				for (Creature* creature : targetList) {
 					if (!isTarget(creature)) {
 						continue;
 					}
 
 					const Position &pos = creature->getPosition();
-					int32_t factionOffset = static_cast<int32_t>(getTarget->getFaction()) * 100;
-					int32_t distance = std::max<int32_t>(Position::getDistanceX(myPos, pos), Position::getDistanceY(myPos, pos)) + factionOffset;
+					int32_t distance = std::max<int32_t>(Position::getDistanceX(myPos, pos), Position::getDistanceY(myPos, pos));
 					if (distance < minRange) {
 						getTarget = creature;
 						minRange = distance;
@@ -525,14 +538,12 @@ bool Monster::searchTarget(TargetSearchType_t searchType /*= TARGETSEARCH_DEFAUL
 				auto it = resultList.begin();
 				getTarget = *it;
 				if (++it != resultList.end()) {
-					int32_t factionOffset = static_cast<int32_t>(getTarget->getFaction()) * 100000;
-					int32_t minHp = getTarget->getHealth() + factionOffset;
+					int32_t minHp = getTarget->getHealth();
 					do {
-						auto hp = (*it)->getHealth() + factionOffset;
-						factionOffset = static_cast<int32_t>((*it)->getFaction()) * 100000;
-						if (hp < minHp) {
+						if ((*it)->getHealth() < minHp) {
 							getTarget = *it;
-							minHp = hp;
+
+							minHp = getTarget->getHealth();
 						}
 					} while (++it != resultList.end());
 				}
@@ -550,11 +561,12 @@ bool Monster::searchTarget(TargetSearchType_t searchType /*= TARGETSEARCH_DEFAUL
 				if (++it != resultList.end()) {
 					int32_t mostDamage = 0;
 					do {
-						int32_t factionOffset = static_cast<int32_t>((*it)->getFaction()) * 100000;
-						const auto dmg = damageMap.find((*it)->getID());
-						if (dmg != damageMap.end() && dmg->second.total + factionOffset > mostDamage) {
-							mostDamage = dmg->second.total;
-							getTarget = *it;
+						const auto &dmg = damageMap.find((*it)->getID());
+						if (dmg != damageMap.end()) {
+							if (dmg->second.total > mostDamage) {
+								mostDamage = dmg->second.total;
+								getTarget = *it;
+							}
 						}
 					} while (++it != resultList.end());
 				}
@@ -576,26 +588,33 @@ bool Monster::searchTarget(TargetSearchType_t searchType /*= TARGETSEARCH_DEFAUL
 	}
 
 	// lets just pick the first target in the list
-	return std::ranges::any_of(getTargetList(), [this](const std::shared_ptr<Creature> &creature) {
-		return selectTarget(creature);
-	});
+	for (Creature* target : targetList) {
+		if (selectTarget(target)) {
+			return true;
+		}
+	}
+	return false;
 }
 
-void Monster::onFollowCreatureComplete(const std::shared_ptr<Creature> &creature) {
-	if (removeTarget(creature) && (hasFollowPath || !isSummon())) {
-		addTarget(creature, hasFollowPath);
+void Monster::onFollowCreatureComplete(const Creature* creature) {
+	if (creature) {
+		auto it = std::find(targetList.begin(), targetList.end(), creature);
+		if (it != targetList.end()) {
+			Creature* target = (*it);
+			targetList.erase(it);
+
+			if (hasFollowPath) {
+				targetList.push_front(target);
+			} else if (!isSummon()) {
+				targetList.push_back(target);
+			} else {
+				target->decrementReferenceCounter();
+			}
+		}
 	}
 }
 
-float Monster::getMitigation() const {
-	float mitigation = mType->info.mitigation * getDefenseMultiplier();
-	if (g_configManager().getBoolean(DISABLE_MONSTER_ARMOR, __FUNCTION__)) {
-		mitigation += std::ceil(static_cast<float>(getDefense() + getArmor()) / 100.f) * getDefenseMultiplier() * 2.f;
-	}
-	return std::min<float>(mitigation, 30.f);
-}
-
-BlockType_t Monster::blockHit(std::shared_ptr<Creature> attacker, CombatType_t combatType, int32_t &damage, bool checkDefense /* = false*/, bool checkArmor /* = false*/, bool /* field = false */) {
+BlockType_t Monster::blockHit(Creature* attacker, CombatType_t combatType, int32_t &damage, bool checkDefense /* = false*/, bool checkArmor /* = false*/, bool /* field = false */) {
 	BlockType_t blockType = Creature::blockHit(attacker, combatType, damage, checkDefense, checkArmor);
 
 	if (damage != 0) {
@@ -606,9 +625,9 @@ BlockType_t Monster::blockHit(std::shared_ptr<Creature> attacker, CombatType_t c
 		}
 
 		// Wheel of destiny
-		std::shared_ptr<Player> player = attacker ? attacker->getPlayer() : nullptr;
-		if (player && player->wheel()->getInstant("Ballistic Mastery")) {
-			elementMod -= player->wheel()->checkElementSensitiveReduction(combatType);
+		Player* player = attacker ? attacker->getPlayer() : nullptr;
+		if (player && player->getWheelOfDestinyInstant("Ballistic Mastery")) {
+			elementMod -= player->checkWheelOfDestinyElementSensitiveReduction(combatType);
 		}
 
 		if (elementMod != 0) {
@@ -623,34 +642,27 @@ BlockType_t Monster::blockHit(std::shared_ptr<Creature> attacker, CombatType_t c
 	return blockType;
 }
 
-bool Monster::isTarget(std::shared_ptr<Creature> creature) {
-	if (creature->isRemoved() || !creature->isAttackable() || creature->getZoneType() == ZONE_PROTECTION || !canSeeCreature(creature)) {
+bool Monster::isTarget(const Creature* creature) const {
+	if (creature->isRemoved() || !creature->isAttackable() || creature->getZone() == ZONE_PROTECTION || !canSeeCreature(creature)) {
 		return false;
 	}
 
 	if (creature->getPosition().z != getPosition().z) {
 		return false;
 	}
-
-	if (!isSummon()) {
-		if (creature->getPlayer() && creature->getPlayer()->isDisconnected()) {
-			return false;
-		}
-
-		if (getFaction() != FACTION_DEFAULT) {
-			return isEnemyFaction(creature->getFaction());
-		}
+	Faction_t targetFaction = creature->getFaction();
+	if (getFaction() != FACTION_DEFAULT && !isSummon()) {
+		return isEnemyFaction(targetFaction);
 	}
-
 	return true;
 }
 
-bool Monster::selectTarget(const std::shared_ptr<Creature> &creature) {
+bool Monster::selectTarget(Creature* creature) {
 	if (!isTarget(creature)) {
 		return false;
 	}
 
-	const auto &it = getTargetIterator(creature);
+	auto it = std::find(targetList.begin(), targetList.end(), creature);
 	if (it == targetList.end()) {
 		// Target not found in our target list.
 		return false;
@@ -658,7 +670,7 @@ bool Monster::selectTarget(const std::shared_ptr<Creature> &creature) {
 
 	if (isHostile() || isSummon()) {
 		if (setAttackedCreature(creature)) {
-			g_dispatcher().addEvent(std::bind(&Game::checkCreatureAttack, &g_game(), getID()), "Game::checkCreatureAttack");
+			g_dispatcher().addTask(createTask(std::bind(&Game::checkCreatureAttack, &g_game(), getID())));
 		}
 	}
 	return setFollowCreature(creature);
@@ -672,24 +684,23 @@ void Monster::setIdle(bool idle) {
 	isIdle = idle;
 
 	if (!isIdle) {
-		g_game().addCreatureCheck(static_self_cast<Monster>());
+		g_game().addCreatureCheck(this);
 	} else {
 		onIdleStatus();
 		clearTargetList();
 		clearFriendList();
-		Game::removeCreatureCheck(static_self_cast<Monster>());
+		Game::removeCreatureCheck(this);
 	}
 }
 
 void Monster::updateIdleStatus() {
 	bool idle = false;
+
 	if (conditions.empty()) {
 		if (!isSummon() && targetList.empty()) {
 			idle = true;
-		} else if (const auto &master = getMaster()) {
-			if ((!isSummon() && totalPlayersOnScreen == 0 || isSummon() && master->getMonster() && master->getMonster()->totalPlayersOnScreen == 0) && getFaction() != FACTION_DEFAULT) {
-				idle = true;
-			}
+		} else if ((!isSummon() && totalPlayersOnScreen == 0 || isSummon() && master->getMonster() && master->getMonster()->totalPlayersOnScreen == 0) && getFaction() != FACTION_DEFAULT) {
+			idle = true;
 		}
 	}
 
@@ -718,9 +729,9 @@ void Monster::onThink(uint32_t interval) {
 		// onThink(self, interval)
 		LuaScriptInterface* scriptInterface = mType->info.scriptInterface;
 		if (!scriptInterface->reserveScriptEnv()) {
-			g_logger().error("Monster {} Call stack overflow. Too many lua script calls "
-							 "being nested.",
-							 getName());
+			SPDLOG_ERROR("Monster {} Call stack overflow. Too many lua script calls "
+						 "being nested.",
+						 getName());
 			return;
 		}
 
@@ -730,7 +741,7 @@ void Monster::onThink(uint32_t interval) {
 		lua_State* L = scriptInterface->getLuaState();
 		scriptInterface->pushFunction(mType->info.thinkEvent);
 
-		LuaScriptInterface::pushUserdata<Monster>(L, getMonster());
+		LuaScriptInterface::pushUserdata<Monster>(L, this);
 		LuaScriptInterface::setMetatable(L, -1, "Monster");
 
 		lua_pushnumber(L, interval);
@@ -745,65 +756,58 @@ void Monster::onThink(uint32_t interval) {
 		if (challengeMeleeDuration <= 0) {
 			challengeMeleeDuration = 0;
 			targetDistance = mType->info.targetDistance;
-			g_game().updateCreatureIcon(static_self_cast<Monster>());
+			g_game().updateCreatureIcon(this);
 		}
 	}
 
 	if (!mType->canSpawn(position)) {
-		g_game().removeCreature(static_self_cast<Monster>());
+		g_game().removeCreature(this);
 	}
 
 	if (!isInSpawnRange(position)) {
-		g_game().internalTeleport(static_self_cast<Monster>(), masterPos);
+		g_game().internalTeleport(this, masterPos);
 		setIdle(true);
-		return;
-	}
+	} else {
+		updateIdleStatus();
 
-	updateIdleStatus();
+		if (!isIdle) {
+			addEventWalk();
 
-	if (isIdle) {
-		return;
-	}
-
-	addEventWalk();
-
-	const auto &attackedCreature = getAttackedCreature();
-	const auto &followCreature = getFollowCreature();
-	if (isSummon()) {
-		if (attackedCreature.get() == this) {
-			setFollowCreature(nullptr);
-		} else if (attackedCreature && followCreature != attackedCreature) {
-			// This happens just after a master orders an attack, so lets follow it aswell.
-			setFollowCreature(attackedCreature);
-		} else if (getMaster() && getMaster()->getAttackedCreature()) {
-			// This happens if the monster is summoned during combat
-			selectTarget(getMaster()->getAttackedCreature());
-		} else if (getMaster() != followCreature) {
-			// Our master has not ordered us to attack anything, lets follow him around instead.
-			setFollowCreature(getMaster());
-		}
-	} else if (!targetList.empty()) {
-		const bool attackedCreatureIsDisconnected = attackedCreature && attackedCreature->getPlayer() && attackedCreature->getPlayer()->isDisconnected();
-		const bool attackedCreatureIsUnattackable = attackedCreature && !canUseAttack(getPosition(), attackedCreature);
-		const bool attackedCreatureIsUnreachable = targetDistance <= 1 && attackedCreature && followCreature && !hasFollowPath;
-		if (!attackedCreature || attackedCreatureIsDisconnected || attackedCreatureIsUnattackable || attackedCreatureIsUnreachable) {
-			if (!followCreature || !hasFollowPath || attackedCreatureIsDisconnected) {
-				searchTarget(TARGETSEARCH_NEAREST);
-			} else if (attackedCreature && isFleeing() && !canUseAttack(getPosition(), attackedCreature)) {
-				searchTarget(TARGETSEARCH_DEFAULT);
+			if (isSummon()) {
+				if (!attackedCreature) {
+					if (getMaster() && getMaster()->getAttackedCreature()) {
+						// This happens if the monster is summoned during combat
+						selectTarget(getMaster()->getAttackedCreature());
+					} else if (getMaster() != followCreature) {
+						// Our master has not ordered us to attack anything, lets follow him around instead.
+						setFollowCreature(getMaster());
+					}
+				} else if (attackedCreature == this) {
+					setFollowCreature(nullptr);
+				} else if (followCreature != attackedCreature) {
+					// This happens just after a master orders an attack, so lets follow it aswell.
+					setFollowCreature(attackedCreature);
+				}
+			} else if (!targetList.empty()) {
+				if (!followCreature || !hasFollowPath) {
+					searchTarget(TARGETSEARCH_NEAREST);
+				} else if (isFleeing()) {
+					if (attackedCreature && !canUseAttack(getPosition(), attackedCreature)) {
+						searchTarget(TARGETSEARCH_DEFAULT);
+					}
+				}
 			}
+
+			onThinkTarget(interval);
+			onThinkYell(interval);
+			onThinkDefense(interval);
+			onThinkSound(interval);
 		}
 	}
-
-	onThinkTarget(interval);
-	onThinkYell(interval);
-	onThinkDefense(interval);
-	onThinkSound(interval);
 }
 
 void Monster::doAttacking(uint32_t interval) {
-	auto attackedCreature = getAttackedCreature();
-	if (!attackedCreature || (isSummon() && attackedCreature.get() == this)) {
+	if (!attackedCreature || (isSummon() && attackedCreature == this)) {
 		return;
 	}
 
@@ -811,11 +815,21 @@ void Monster::doAttacking(uint32_t interval) {
 	bool resetTicks = interval != 0;
 	attackTicks += interval;
 
+	float forgeAttackBonus = 0;
+	if (monsterForgeClassification > ForgeClassifications_t::FORGE_NORMAL_MONSTER) {
+		uint16_t damageBase = 3;
+		forgeAttackBonus = static_cast<float>(damageBase + 100) / 100.f;
+	}
+
 	const Position &myPos = getPosition();
 	const Position &targetPos = attackedCreature->getPosition();
 
 	for (const spellBlock_t &spellBlock : mType->info.attackSpells) {
 		bool inRange = false;
+
+		if (attackedCreature == nullptr) {
+			break;
+		}
 
 		if (spellBlock.spell == nullptr || spellBlock.isMelee && isFleeing()) {
 			continue;
@@ -828,14 +842,26 @@ void Monster::doAttacking(uint32_t interval) {
 					updateLook = false;
 				}
 
-				minCombatValue = spellBlock.minCombatValue;
-				maxCombatValue = spellBlock.maxCombatValue;
+				float multiplier;
+				if (maxCombatValue > 0) { // Defense
+					multiplier = g_configManager().getFloat(RATE_MONSTER_DEFENSE);
+				} else { // Attack
+					multiplier = g_configManager().getFloat(RATE_MONSTER_ATTACK);
+				}
 
-				if (spellBlock.spell == nullptr) {
+				minCombatValue = spellBlock.minCombatValue * multiplier;
+				maxCombatValue = spellBlock.maxCombatValue * multiplier;
+
+				if (maxCombatValue <= 0 && forgeAttackBonus > 0) {
+					minCombatValue *= static_cast<int32_t>(forgeAttackBonus);
+					maxCombatValue *= static_cast<int32_t>(forgeAttackBonus);
+				}
+
+				if (!spellBlock.spell) {
 					continue;
 				}
 
-				spellBlock.spell->castSpell(getMonster(), attackedCreature);
+				spellBlock.spell->castSpell(this, attackedCreature);
 
 				if (spellBlock.isMelee) {
 					extraMeleeAttack = false;
@@ -858,7 +884,7 @@ void Monster::doAttacking(uint32_t interval) {
 	}
 }
 
-bool Monster::canUseAttack(const Position &pos, const std::shared_ptr<Creature> &target) const {
+bool Monster::canUseAttack(const Position &pos, const Creature* target) const {
 	if (isHostile()) {
 		const Position &targetPos = target->getPosition();
 		uint32_t distance = std::max<uint32_t>(Position::getDistanceX(pos, targetPos), Position::getDistanceY(pos, targetPos));
@@ -911,18 +937,17 @@ void Monster::onThinkTarget(uint32_t interval) {
 
 			if (challengeFocusDuration > 0) {
 				challengeFocusDuration -= interval;
-				canChangeTarget = false;
 
 				if (challengeFocusDuration <= 0) {
 					challengeFocusDuration = 0;
 				}
 			}
 
-			if (m_targetChangeCooldown > 0) {
-				m_targetChangeCooldown -= interval;
+			if (targetChangeCooldown > 0) {
+				targetChangeCooldown -= interval;
 
-				if (m_targetChangeCooldown <= 0) {
-					m_targetChangeCooldown = 0;
+				if (targetChangeCooldown <= 0) {
+					targetChangeCooldown = 0;
 					targetChangeTicks = mType->info.changeTargetSpeed;
 				} else {
 					canChangeTarget = false;
@@ -934,18 +959,14 @@ void Monster::onThinkTarget(uint32_t interval) {
 
 				if (targetChangeTicks >= mType->info.changeTargetSpeed) {
 					targetChangeTicks = 0;
-					m_targetChangeCooldown = mType->info.changeTargetSpeed;
+					targetChangeCooldown = mType->info.changeTargetSpeed;
 
 					if (challengeFocusDuration > 0) {
 						challengeFocusDuration = 0;
 					}
 
 					if (mType->info.changeTargetChance >= uniform_random(1, 100)) {
-						if (mType->info.targetDistance <= 1) {
-							searchTarget(TARGETSEARCH_RANDOM);
-						} else {
-							searchTarget(TARGETSEARCH_NEAREST);
-						}
+						searchTarget(TARGETSEARCH_DEFAULT);
 					}
 				}
 			}
@@ -971,18 +992,18 @@ void Monster::onThinkDefense(uint32_t interval) {
 		if ((spellBlock.chance >= static_cast<uint32_t>(uniform_random(1, 100)))) {
 			minCombatValue = spellBlock.minCombatValue;
 			maxCombatValue = spellBlock.maxCombatValue;
-			spellBlock.spell->castSpell(getMonster(), getMonster());
+			spellBlock.spell->castSpell(this, this);
 		}
 	}
 
-	if (!isSummon() && m_summons.size() < mType->info.maxSummons && hasFollowPath) {
+	if (!isSummon() && summons.size() < mType->info.maxSummons && hasFollowPath) {
 		for (const summonBlock_t &summonBlock : mType->info.summons) {
 			if (summonBlock.speed > defenseTicks) {
 				resetTicks = false;
 				continue;
 			}
 
-			if (m_summons.size() >= mType->info.maxSummons) {
+			if (summons.size() >= mType->info.maxSummons) {
 				continue;
 			}
 
@@ -992,8 +1013,8 @@ void Monster::onThinkDefense(uint32_t interval) {
 			}
 
 			uint32_t summonCount = 0;
-			for (const auto &summon : m_summons) {
-				if (summon && summon->getName() == summonBlock.name) {
+			for (Creature* summon : summons) {
+				if (summon->getName() == summonBlock.name) {
 					++summonCount;
 				}
 			}
@@ -1006,13 +1027,15 @@ void Monster::onThinkDefense(uint32_t interval) {
 				continue;
 			}
 
-			std::shared_ptr<Monster> summon = Monster::createMonster(summonBlock.name);
+			Monster* summon = Monster::createMonster(summonBlock.name);
 			if (summon) {
 				if (g_game().placeCreature(summon, getPosition(), false, summonBlock.force)) {
-					summon->setMaster(static_self_cast<Monster>(), true);
+					summon->setMaster(this, true);
 					g_game().addMagicEffect(getPosition(), CONST_ME_MAGIC_BLUE);
 					g_game().addMagicEffect(summon->getPosition(), CONST_ME_TELEPORT);
-					g_game().sendSingleSoundEffect(summon->getPosition(), SoundEffect_t::MONSTER_SPELL_SUMMON, getMonster());
+					g_game().sendSingleSoundEffect(summon->getPosition(), SoundEffect_t::MONSTER_SPELL_SUMMON, this);
+				} else {
+					delete summon;
 				}
 			}
 		}
@@ -1037,9 +1060,9 @@ void Monster::onThinkYell(uint32_t interval) {
 			const voiceBlock_t &vb = mType->info.voiceVector[index];
 
 			if (vb.yellText) {
-				g_game().internalCreatureSay(static_self_cast<Monster>(), TALKTYPE_MONSTER_YELL, vb.text, false);
+				g_game().internalCreatureSay(this, TALKTYPE_MONSTER_YELL, vb.text, false);
 			} else {
-				g_game().internalCreatureSay(static_self_cast<Monster>(), TALKTYPE_MONSTER_SAY, vb.text, false);
+				g_game().internalCreatureSay(this, TALKTYPE_MONSTER_SAY, vb.text, false);
 			}
 		}
 	}
@@ -1056,16 +1079,16 @@ void Monster::onThinkSound(uint32_t interval) {
 
 		if (!mType->info.soundVector.empty() && (mType->info.soundChance >= static_cast<uint32_t>(uniform_random(1, 100)))) {
 			int64_t index = uniform_random(0, static_cast<int64_t>(mType->info.soundVector.size() - 1));
-			g_game().sendSingleSoundEffect(static_self_cast<Monster>()->getPosition(), mType->info.soundVector[index], getMonster());
+			g_game().sendSingleSoundEffect(this->getPosition(), mType->info.soundVector[index], this);
 		}
 	}
 }
 
-bool Monster::pushItem(std::shared_ptr<Item> item, const Direction &nextDirection) {
+bool Monster::pushItem(Item* item, const Direction &nextDirection) {
 	const Position &centerPos = item->getPosition();
 	for (const auto &[x, y] : getPushItemLocationOptions(nextDirection)) {
 		Position tryPos(centerPos.x + x, centerPos.y + y, centerPos.z);
-		std::shared_ptr<Tile> tile = g_game().map.getTile(tryPos);
+		Tile* tile = g_game().map.getTile(tryPos);
 		if (tile && g_game().canThrowObjectTo(centerPos, tryPos) && g_game().internalMoveItem(item->getParent(), tile, INDEX_WHEREEVER, item, item->getItemCount(), nullptr) == RETURNVALUE_NOERROR) {
 			return true;
 		}
@@ -1073,7 +1096,7 @@ bool Monster::pushItem(std::shared_ptr<Item> item, const Direction &nextDirectio
 	return false;
 }
 
-void Monster::pushItems(std::shared_ptr<Tile> tile, const Direction &nextDirection) {
+void Monster::pushItems(Tile* tile, const Direction &nextDirection) {
 	// We can not use iterators here since we can push the item to another tile
 	// which will invalidate the iterator.
 	// start from the end to minimize the amount of traffic
@@ -1085,8 +1108,8 @@ void Monster::pushItems(std::shared_ptr<Tile> tile, const Direction &nextDirecti
 	uint32_t removeCount = 0;
 	auto it = items->begin();
 	while (it != items->end()) {
-		std::shared_ptr<Item> item = *it;
-		if (item && item->hasProperty(CONST_PROP_MOVABLE) && (item->hasProperty(CONST_PROP_BLOCKPATH) || item->hasProperty(CONST_PROP_BLOCKSOLID)) && item->canBeMoved()) {
+		Item* item = *it;
+		if (item && item->hasProperty(CONST_PROP_MOVEABLE) && (item->hasProperty(CONST_PROP_BLOCKPATH) || item->hasProperty(CONST_PROP_BLOCKSOLID)) && item->getAttribute<uint16_t>(ItemAttribute_t::ACTIONID) != IMMOVABLE_ACTION_ID) {
 			if (moveCount < 20 && pushItem(item, nextDirection)) {
 				++moveCount;
 			} else if (!item->isCorpse() && g_game().internalRemoveItem(item) == RETURNVALUE_NOERROR) {
@@ -1101,7 +1124,7 @@ void Monster::pushItems(std::shared_ptr<Tile> tile, const Direction &nextDirecti
 	}
 }
 
-bool Monster::pushCreature(std::shared_ptr<Creature> creature) {
+bool Monster::pushCreature(Creature* creature) {
 	static std::vector<Direction> dirList {
 		DIRECTION_NORTH,
 		DIRECTION_WEST, DIRECTION_EAST,
@@ -1111,7 +1134,7 @@ bool Monster::pushCreature(std::shared_ptr<Creature> creature) {
 
 	for (Direction dir : dirList) {
 		const Position &tryPos = Spells::getCasterPosition(creature, dir);
-		const auto toTile = g_game().map.getTile(tryPos);
+		const Tile* toTile = g_game().map.getTile(tryPos);
 		if (toTile && !toTile->hasFlag(TILESTATE_BLOCKPATH) && g_game().internalMoveCreature(creature, dir) == RETURNVALUE_NOERROR) {
 			return true;
 		}
@@ -1119,15 +1142,15 @@ bool Monster::pushCreature(std::shared_ptr<Creature> creature) {
 	return false;
 }
 
-void Monster::pushCreatures(std::shared_ptr<Tile> tile) {
+void Monster::pushCreatures(Tile* tile) {
 	// We can not use iterators here since we can push a creature to another tile
 	// which will invalidate the iterator.
 	if (CreatureVector* creatures = tile->getCreatures()) {
 		uint32_t removeCount = 0;
-		std::shared_ptr<Monster> lastPushedMonster = nullptr;
+		Monster* lastPushedMonster = nullptr;
 
 		for (size_t i = 0; i < creatures->size();) {
-			std::shared_ptr<Monster> monster = creatures->at(i)->getMonster();
+			Monster* monster = creatures->at(i)->getMonster();
 			if (monster && monster->isPushable()) {
 				if (monster != lastPushedMonster && Monster::pushCreature(monster)) {
 					lastPushedMonster = monster;
@@ -1157,7 +1180,7 @@ bool Monster::getNextStep(Direction &nextDirection, uint32_t &flags) {
 
 	bool result = false;
 
-	if (getFollowCreature() && hasFollowPath) {
+	if (followCreature && hasFollowPath) {
 		doFollowCreature(flags, nextDirection, result);
 	} else {
 		doRandomStep(nextDirection, result);
@@ -1165,7 +1188,7 @@ bool Monster::getNextStep(Direction &nextDirection, uint32_t &flags) {
 
 	if (result && (canPushItems() || canPushCreatures())) {
 		const Position &pos = getNextPosition(nextDirection, getPosition());
-		auto posTile = g_game().map.getTile(pos);
+		Tile* posTile = g_game().map.getTile(pos);
 		if (posTile) {
 			if (canPushItems()) {
 				Monster::pushItems(posTile, nextDirection);
@@ -1198,8 +1221,6 @@ void Monster::doFollowCreature(uint32_t &flags, Direction &nextDirection, bool &
 			updateMapCache();
 		}
 		// target dancing
-		auto attackedCreature = getAttackedCreature();
-		auto followCreature = getFollowCreature();
 		if (attackedCreature && attackedCreature == followCreature) {
 			if (isFleeing()) {
 				result = getDanceStep(getPosition(), nextDirection, false, false);
@@ -1210,7 +1231,7 @@ void Monster::doFollowCreature(uint32_t &flags, Direction &nextDirection, bool &
 	}
 }
 
-bool Monster::getRandomStep(const Position &creaturePos, Direction &moveDirection) {
+bool Monster::getRandomStep(const Position &creaturePos, Direction &moveDirection) const {
 	static std::vector<Direction> dirList {
 		DIRECTION_NORTH,
 		DIRECTION_WEST, DIRECTION_EAST,
@@ -1228,11 +1249,9 @@ bool Monster::getRandomStep(const Position &creaturePos, Direction &moveDirectio
 }
 
 bool Monster::getDanceStep(const Position &creaturePos, Direction &moveDirection, bool keepAttack /*= true*/, bool keepDistance /*= true*/) {
-	auto attackedCreature = getAttackedCreature();
-	if (!attackedCreature) {
-		return false;
-	}
 	bool canDoAttackNow = canUseAttack(creaturePos, attackedCreature);
+
+	assert(attackedCreature != nullptr);
 	const Position &centerPos = attackedCreature->getPosition();
 
 	int_fast32_t offset_x = Position::getOffsetX(creaturePos, centerPos);
@@ -1249,6 +1268,7 @@ bool Monster::getDanceStep(const Position &creaturePos, Direction &moveDirection
 	}
 
 	std::vector<Direction> dirList;
+
 	if (!keepDistance || offset_y >= 0) {
 		uint32_t tmpDist = std::max<uint32_t>(distance_x, std::abs((creaturePos.getY() - 1) - centerPos.getY()));
 		if (tmpDist == centerToDist && canWalkTo(creaturePos, DIRECTION_NORTH)) {
@@ -1809,53 +1829,50 @@ bool Monster::getDistanceStep(const Position &targetPos, Direction &moveDirectio
 	return true;
 }
 
-bool Monster::canWalkTo(Position pos, Direction moveDirection) {
+bool Monster::canWalkTo(Position pos, Direction moveDirection) const {
 	pos = getNextPosition(moveDirection, pos);
 	if (isInSpawnRange(pos)) {
 		if (getWalkCache(pos) == 0) {
 			return false;
 		}
 
-		const auto tile = g_game().map.getTile(pos);
-		if (tile && tile->getTopVisibleCreature(getMonster()) == nullptr && tile->queryAdd(0, getMonster(), 1, FLAG_PATHFINDING | FLAG_IGNOREFIELDDAMAGE) == RETURNVALUE_NOERROR) {
+		const Tile* tile = g_game().map.getTile(pos);
+		if (tile && tile->getTopVisibleCreature(this) == nullptr && tile->queryAdd(0, *this, 1, FLAG_PATHFINDING | FLAG_IGNOREFIELDDAMAGE) == RETURNVALUE_NOERROR) {
 			return true;
 		}
 	}
 	return false;
 }
 
-void Monster::death(std::shared_ptr<Creature>) {
+void Monster::death(Creature*) {
 	if (monsterForgeClassification > ForgeClassifications_t::FORGE_NORMAL_MONSTER) {
 		g_game().removeForgeMonster(getID(), monsterForgeClassification, true);
 	}
 	setAttackedCreature(nullptr);
 
-	for (const auto &summon : m_summons) {
-		if (!summon) {
-			continue;
-		}
+	for (Creature* summon : summons) {
 		summon->changeHealth(-summon->getHealth());
 		summon->removeMaster();
 	}
-	m_summons.clear();
+	summons.clear();
 
 	clearTargetList();
 	clearFriendList();
 	onIdleStatus();
 
 	if (mType) {
-		g_game().sendSingleSoundEffect(static_self_cast<Monster>()->getPosition(), mType->info.deathSound, getMonster());
+		g_game().sendSingleSoundEffect(this->getPosition(), mType->info.deathSound, this);
 	}
 }
 
-std::shared_ptr<Item> Monster::getCorpse(std::shared_ptr<Creature> lastHitCreature, std::shared_ptr<Creature> mostDamageCreature) {
-	std::shared_ptr<Item> corpse = Creature::getCorpse(lastHitCreature, mostDamageCreature);
+Item* Monster::getCorpse(Creature* lastHitCreature, Creature* mostDamageCreature) {
+	Item* corpse = Creature::getCorpse(lastHitCreature, mostDamageCreature);
 	if (corpse) {
 		if (mostDamageCreature) {
 			if (mostDamageCreature->getPlayer()) {
 				corpse->setAttribute(ItemAttribute_t::CORPSEOWNER, mostDamageCreature->getID());
 			} else {
-				std::shared_ptr<Creature> mostDamageCreatureMaster = mostDamageCreature->getMaster();
+				const Creature* mostDamageCreatureMaster = mostDamageCreature->getMaster();
 				if (mostDamageCreatureMaster && mostDamageCreatureMaster->getPlayer()) {
 					corpse->setAttribute(ItemAttribute_t::CORPSEOWNER, mostDamageCreatureMaster->getID());
 				}
@@ -1894,90 +1911,92 @@ bool Monster::getCombatValues(int32_t &min, int32_t &max) {
 		return false;
 	}
 
-	min = minCombatValue;
-	max = maxCombatValue;
+	float multiplier;
+	if (maxCombatValue > 0) { // Defense
+		multiplier = g_configManager().getFloat(RATE_MONSTER_DEFENSE);
+	} else { // Attack
+		multiplier = g_configManager().getFloat(RATE_MONSTER_ATTACK);
+	}
+
+	min = minCombatValue * multiplier;
+	max = maxCombatValue * multiplier;
 	return true;
 }
 
 void Monster::updateLookDirection() {
 	Direction newDir = getDirection();
-	auto attackedCreature = getAttackedCreature();
-	if (!attackedCreature) {
-		return;
-	}
 
-	const Position &pos = getPosition();
-	const Position &attackedCreaturePos = attackedCreature->getPosition();
-	int_fast32_t offsetx = Position::getOffsetX(attackedCreaturePos, pos);
-	int_fast32_t offsety = Position::getOffsetY(attackedCreaturePos, pos);
+	if (attackedCreature) {
+		const Position &pos = getPosition();
+		const Position &attackedCreaturePos = attackedCreature->getPosition();
+		int_fast32_t offsetx = Position::getOffsetX(attackedCreaturePos, pos);
+		int_fast32_t offsety = Position::getOffsetY(attackedCreaturePos, pos);
 
-	int32_t dx = std::abs(offsetx);
-	int32_t dy = std::abs(offsety);
-	if (dx > dy) {
-		// look EAST/WEST
-		if (offsetx < 0) {
-			newDir = DIRECTION_WEST;
-		} else {
-			newDir = DIRECTION_EAST;
-		}
-	} else if (dx < dy) {
-		// look NORTH/SOUTH
-		if (offsety < 0) {
-			newDir = DIRECTION_NORTH;
-		} else {
-			newDir = DIRECTION_SOUTH;
-		}
-	} else {
-		Direction dir = getDirection();
-		if (offsetx < 0 && offsety < 0) {
-			if (dir == DIRECTION_SOUTH) {
+		int32_t dx = std::abs(offsetx);
+		int32_t dy = std::abs(offsety);
+		if (dx > dy) {
+			// look EAST/WEST
+			if (offsetx < 0) {
 				newDir = DIRECTION_WEST;
-			} else if (dir == DIRECTION_EAST) {
-				newDir = DIRECTION_NORTH;
+			} else {
+				newDir = DIRECTION_EAST;
 			}
-		} else if (offsetx < 0 && offsety > 0) {
-			if (dir == DIRECTION_NORTH) {
-				newDir = DIRECTION_WEST;
-			} else if (dir == DIRECTION_EAST) {
+		} else if (dx < dy) {
+			// look NORTH/SOUTH
+			if (offsety < 0) {
+				newDir = DIRECTION_NORTH;
+			} else {
 				newDir = DIRECTION_SOUTH;
 			}
-		} else if (offsetx > 0 && offsety < 0) {
-			if (dir == DIRECTION_SOUTH) {
-				newDir = DIRECTION_EAST;
-			} else if (dir == DIRECTION_WEST) {
-				newDir = DIRECTION_NORTH;
-			}
 		} else {
-			if (dir == DIRECTION_NORTH) {
-				newDir = DIRECTION_EAST;
-			} else if (dir == DIRECTION_WEST) {
-				newDir = DIRECTION_SOUTH;
+			Direction dir = getDirection();
+			if (offsetx < 0 && offsety < 0) {
+				if (dir == DIRECTION_SOUTH) {
+					newDir = DIRECTION_WEST;
+				} else if (dir == DIRECTION_EAST) {
+					newDir = DIRECTION_NORTH;
+				}
+			} else if (offsetx < 0 && offsety > 0) {
+				if (dir == DIRECTION_NORTH) {
+					newDir = DIRECTION_WEST;
+				} else if (dir == DIRECTION_EAST) {
+					newDir = DIRECTION_SOUTH;
+				}
+			} else if (offsetx > 0 && offsety < 0) {
+				if (dir == DIRECTION_SOUTH) {
+					newDir = DIRECTION_EAST;
+				} else if (dir == DIRECTION_WEST) {
+					newDir = DIRECTION_NORTH;
+				}
+			} else {
+				if (dir == DIRECTION_NORTH) {
+					newDir = DIRECTION_EAST;
+				} else if (dir == DIRECTION_WEST) {
+					newDir = DIRECTION_SOUTH;
+				}
 			}
 		}
 	}
-	g_game().internalCreatureTurn(getMonster(), newDir);
+	g_game().internalCreatureTurn(this, newDir);
 }
 
-void Monster::dropLoot(std::shared_ptr<Container> corpse, std::shared_ptr<Creature>) {
+void Monster::dropLoot(Container* corpse, Creature*) {
 	if (corpse && lootDrop) {
 		// Only fiendish drops sliver
 		if (ForgeClassifications_t classification = getMonsterForgeClassification();
 			// Condition
 			classification == ForgeClassifications_t::FORGE_FIENDISH_MONSTER) {
-			auto minSlivers = g_configManager().getNumber(FORGE_MIN_SLIVERS, __FUNCTION__);
-			auto maxSlivers = g_configManager().getNumber(FORGE_MAX_SLIVERS, __FUNCTION__);
+			auto minSlivers = g_configManager().getNumber(FORGE_MIN_SLIVERS);
+			auto maxSlivers = g_configManager().getNumber(FORGE_MAX_SLIVERS);
 
 			auto sliverCount = static_cast<uint16_t>(uniform_random(minSlivers, maxSlivers));
 
-			std::shared_ptr<Item> sliver = Item::CreateItem(ITEM_FORGE_SLIVER, sliverCount);
+			Item* sliver = Item::CreateItem(ITEM_FORGE_SLIVER, sliverCount);
 			if (g_game().internalAddItem(corpse, sliver) != RETURNVALUE_NOERROR) {
 				corpse->internalAddThing(sliver);
 			}
 		}
-		if (!this->isRewardBoss() && g_configManager().getNumber(RATE_LOOT, __FUNCTION__) > 0) {
-			g_callbacks().executeCallback(EventCallback_t::monsterOnDropLoot, &EventCallback::monsterOnDropLoot, getMonster(), corpse);
-			g_callbacks().executeCallback(EventCallback_t::monsterPostDropLoot, &EventCallback::monsterPostDropLoot, getMonster(), corpse);
-		}
+		g_events().eventMonsterOnDropLoot(this, corpse);
 	}
 }
 
@@ -1985,7 +2004,7 @@ void Monster::setNormalCreatureLight() {
 	internalLight = mType->info.light;
 }
 
-void Monster::drainHealth(std::shared_ptr<Creature> attacker, int32_t damage) {
+void Monster::drainHealth(Creature* attacker, int32_t damage) {
 	Creature::drainHealth(attacker, damage);
 
 	if (damage > 0 && randomStepping) {
@@ -2001,7 +2020,7 @@ void Monster::drainHealth(std::shared_ptr<Creature> attacker, int32_t damage) {
 void Monster::changeHealth(int32_t healthChange, bool sendHealthChange /* = true*/) {
 	if (mType && !mType->info.soundVector.empty() && mType->info.soundChance >= static_cast<uint32_t>(uniform_random(1, 100))) {
 		auto index = uniform_random(0, mType->info.soundVector.size() - 1);
-		g_game().sendSingleSoundEffect(static_self_cast<Monster>()->getPosition(), mType->info.soundVector[index], getMonster());
+		g_game().sendSingleSoundEffect(this->getPosition(), mType->info.soundVector[index], this);
 	}
 
 	// In case a player with ignore flag set attacks the monster
@@ -2009,19 +2028,23 @@ void Monster::changeHealth(int32_t healthChange, bool sendHealthChange /* = true
 	Creature::changeHealth(healthChange, sendHealthChange);
 }
 
-bool Monster::challengeCreature(std::shared_ptr<Creature> creature, int targetChangeCooldown) {
+bool Monster::challengeCreature(Creature* creature) {
 	if (isSummon()) {
 		return false;
 	}
 
 	bool result = selectTarget(creature);
 	if (result) {
+		targetChangeCooldown = 8000;
 		challengeFocusDuration = targetChangeCooldown;
 		targetChangeTicks = 0;
 		// Wheel of destiny
-		std::shared_ptr<Player> player = creature ? creature->getPlayer() : nullptr;
-		if (player && !player->isRemoved()) {
-			player->wheel()->healIfBattleHealingActive();
+		Player* player = creature ? creature->getPlayer() : nullptr;
+		if (player && !player->isRemoved() && player->getWheelOfDestinyInstant("Battle Healing")) {
+			CombatDamage damage;
+			damage.primary.value = player->checkWheelOfDestinyBattleHealingAmount();
+			damage.primary.type = COMBAT_HEALING;
+			g_game().combatChangeHealth(creature, creature, damage);
 		}
 	}
 	return result;
@@ -2041,20 +2064,12 @@ bool Monster::changeTargetDistance(int32_t distance, uint32_t duration /* = 1200
 	targetDistance = distance;
 
 	if (shouldUpdate) {
-		g_game().updateCreatureIcon(static_self_cast<Monster>());
+		g_game().updateCreatureIcon(this);
 	}
 	return true;
 }
 
-bool Monster::isImmune(ConditionType_t conditionType) const {
-	return mType->info.m_conditionImmunities[static_cast<size_t>(conditionType)];
-}
-
-bool Monster::isImmune(CombatType_t combatType) const {
-	return mType->info.m_damageImmunities[combatTypeToIndex(combatType)];
-}
-
-void Monster::getPathSearchParams(const std::shared_ptr<Creature> &creature, FindPathParams &fpp) {
+void Monster::getPathSearchParams(const Creature* creature, FindPathParams &fpp) const {
 	Creature::getPathSearchParams(creature, fpp);
 
 	fpp.minTargetDist = 1;
@@ -2070,8 +2085,8 @@ void Monster::getPathSearchParams(const std::shared_ptr<Creature> &creature, Fin
 			fpp.fullPathSearch = !canUseAttack(getPosition(), creature);
 		}
 	} else if (isFleeing()) {
-		// Distance should be higher than the client view range (MAP_MAX_CLIENT_VIEW_PORT_X/MAP_MAX_CLIENT_VIEW_PORT_Y)
-		fpp.maxTargetDist = MAP_MAX_VIEW_PORT_X;
+		// Distance should be higher than the client view range (Map::maxClientViewportX/Map::maxClientViewportY)
+		fpp.maxTargetDist = Map::maxViewportX;
 		fpp.clearSight = false;
 		fpp.keepDistance = true;
 		fpp.fullPathSearch = false;
@@ -2087,15 +2102,22 @@ void Monster::configureForgeSystem() {
 		return;
 	}
 
+	// Avoid double forge
 	if (monsterForgeClassification == ForgeClassifications_t::FORGE_FIENDISH_MONSTER) {
+		// Set stack
 		setForgeStack(15);
-		setIcon("forge", CreatureIcon(CreatureIconModifications_t::Fiendish, 0 /* don't show stacks on fiends */));
-		g_game().updateCreatureIcon(static_self_cast<Monster>());
+		// Set icon
+		setMonsterIcon(15, 5);
+		// Update
+		g_game().updateCreatureIcon(this);
 	} else if (monsterForgeClassification == ForgeClassifications_t::FORGE_INFLUENCED_MONSTER) {
+		// Set stack
 		auto stack = static_cast<uint16_t>(normal_random(1, 5));
 		setForgeStack(stack);
-		setIcon("forge", CreatureIcon(CreatureIconModifications_t::Influenced, stack));
-		g_game().updateCreatureIcon(static_self_cast<Monster>());
+		// Set icon
+		setMonsterIcon(stack, 4);
+		// Update
+		g_game().updateCreatureIcon(this);
 	}
 
 	// Change health based in stacks
@@ -2109,7 +2131,7 @@ void Monster::configureForgeSystem() {
 	const std::string &Eventname = "ForgeSystemMonster";
 	registerCreatureEvent(Eventname);
 
-	g_game().sendUpdateCreature(static_self_cast<Monster>());
+	g_game().sendUpdateCreature(this);
 }
 
 void Monster::clearFiendishStatus() {
@@ -2117,12 +2139,20 @@ void Monster::clearFiendishStatus() {
 	forgeStack = 0;
 	monsterForgeClassification = ForgeClassifications_t::FORGE_NORMAL_MONSTER;
 
-	health = mType->info.health * mType->getHealthMultiplier();
-	healthMax = mType->info.healthMax * mType->getHealthMultiplier();
+	float multiplier = g_configManager().getFloat(RATE_MONSTER_HEALTH);
+	health = mType->info.health * static_cast<int32_t>(multiplier);
+	healthMax = mType->info.healthMax * static_cast<int32_t>(multiplier);
 
-	removeIcon("forge");
-	g_game().updateCreatureIcon(static_self_cast<Monster>());
-	g_game().sendUpdateCreature(static_self_cast<Monster>());
+	// Set icon
+	setMonsterIcon(0, CREATUREICON_NONE);
+	g_game().updateCreatureIcon(this);
+
+	g_game().sendUpdateCreature(this);
+}
+
+void Monster::setMonsterIcon(uint16_t iconcount, uint16_t iconnumber) {
+	iconCount = iconcount;
+	iconNumber = iconnumber;
 }
 
 bool Monster::canDropLoot() const {

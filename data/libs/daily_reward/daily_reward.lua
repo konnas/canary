@@ -10,7 +10,7 @@ DAILY_REWARD_LAST = 7
 -- Global tables
 DailyRewardBonus = {
 	Stamina = {},
-	Soul = {},
+	Soul = {}
 }
 
 function RegenStamina(id, delay)
@@ -38,17 +38,19 @@ end
 
 function RegenSoul(id, delay)
 	local soulEvent = DailyRewardBonus.Soul[id]
+	local maxsoul = 0
 	local player = Player(id)
 	if not player then
 		stopEvent(soulEvent)
 		DailyRewardBonus.Soul[id] = nil
 		return false
 	end
-	local maxsoul = 100
-	if (configManager.getBoolean(configKeys.VIP_SYSTEM_ENABLED) and player:isVip()) or player:isPremium() then
-		maxsoul = 200
-	end
 	if player:getTile():hasFlag(TILESTATE_PROTECTIONZONE) then
+		if player:isPremium() then
+			maxsoul = 200
+		else
+			maxsoul = 100
+		end
 		if player:getSoul() < maxsoul then
 			player:addSoul(1)
 			player:sendTextMessage(MESSAGE_FAILURE, "One soul point has been restored.")
@@ -61,23 +63,23 @@ end
 
 function string.diff(self)
 	local format = {
-		{ "day", self / 60 / 60 / 24 },
-		{ "hour", self / 60 / 60 % 24 },
-		{ "minute", self / 60 % 60 },
-		{ "second", self % 60 },
+		{'day', self / 60 / 60 / 24},
+		{'hour', self / 60 / 60 % 24},
+		{'minute', self / 60 % 60},
+		{'second', self % 60}
 	}
 
 	local out = {}
 	for k, t in ipairs(format) do
 		local v = math.floor(t[2])
-		if v > 0 then
-			table.insert(out, (k < #format and (#out > 0 and ", " or "") or " and ") .. v .. " " .. t[1] .. (v ~= 1 and "s" or ""))
+		if(v > 0) then
+			table.insert(out, (k < #format and (#out > 0 and ', ' or '') or ' and ') .. v .. ' ' .. t[1] .. (v ~= 1 and 's' or ''))
 		end
 	end
 	local ret = table.concat(out)
-	if ret:len() < 16 and ret:find("second") then
-		local a, b = ret:find(" and ")
-		ret = ret:sub(b + 1)
+	if ret:len() < 16 and ret:find('second') then
+		local a, b = ret:find(' and ')
+		ret = ret:sub(b+1)
 	end
 	return ret
 end
@@ -87,7 +89,7 @@ function GetDailyRewardLastServerSave()
 end
 
 function UpdateDailyRewardGlobalStorage(key, value)
-	db.query("INSERT INTO `global_storage` (`key`, `value`) VALUES (" .. key .. ", " .. value .. ") ON DUPLICATE KEY UPDATE `value` = " .. value)
+	db.query("INSERT INTO `global_storage` (`key`, `value`) VALUES (".. key ..", ".. value ..") ON DUPLICATE KEY UPDATE `value` = ".. value)
 end
 
 function RetrieveGlobalStorage(key)
