@@ -292,6 +292,26 @@ function Player.isMage(self)
 	return table.contains({ VOCATION.ID.SORCERER, VOCATION.ID.MASTER_SORCERER, VOCATION.ID.DRUID, VOCATION.ID.ELDER_DRUID }, self:getVocation():getId())
 end
 
+function Player.isEspadachim(self)
+	return table.contains(VOCATION.ID.ESPADACHIM, self:getVocation():getId())
+end
+
+function Player.isBarbaro(self)
+	return table.contains(VOCATION.ID.BARBARO, self:getVocation():getId())
+end
+
+function Player.isPaladino(self)
+	return table.contains(VOCATION.ID.PALADINO, self:getVocation():getId())
+end
+
+function Player.isCacador(self)
+	return table.contains(VOCATION.ID.CACADOR, self:getVocation():getId())
+end
+
+function Player.isMago(self)
+	return table.contains(VOCATION.ID.MAGO, self:getVocation():getId())
+end
+
 local ACCOUNT_STORAGES = {}
 function Player.getAccountStorage(self, key, forceUpdate)
 	local accountId = self:getAccountId()
