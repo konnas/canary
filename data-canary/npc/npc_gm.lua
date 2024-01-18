@@ -14,12 +14,11 @@ npcConfig.outfit = {
 	lookBody = 114,
 	lookLegs = 114,
 	lookFeet = 114,
-	lookAddons = 3
+	lookAddons = 3,
 }
 
-
 npcConfig.flags = {
-	floorchange = false
+	floorchange = false,
 }
 
 local keywordHandler = KeywordHandler:new()
@@ -75,7 +74,7 @@ end
 local function creatureSayCallback(npc, creature, type, message)
 	local player = Player(creature)
 	local playerId = player:getId()
-	
+
 	if npcHandler:getTopic(playerId) == 0 and MsgContains(message, "teleport") then
 		npcHandler:say("Voce foi teleportado.", npc, creature)
 		doTeleportThing(creature, npc:getPosition())
@@ -93,7 +92,7 @@ local function creatureSayCallback(npc, creature, type, message)
 	elseif npcHandler:getTopic(playerId) == 2 then
 		item = Game.createItem(message, 1)
 		player:addItemEx(item)
-		npcHandler:say({"Voce recebeu um " .. item:getName()}, npc, creature)
+		npcHandler:say({ "Voce recebeu um " .. item:getName() }, npc, creature)
 		npcHandler:setTopic(playerId, 0)
 	elseif npcHandler:getTopic(playerId) == 0 and MsgContains(message, "level") then
 		npcHandler:say("Escolha seu level.", npc, creature)
@@ -128,19 +127,19 @@ local function creatureSayCallback(npc, creature, type, message)
 		end
 		npcHandler:setTopic(playerId, 0)
 	elseif npcHandler:getTopic(playerId) == 0 and MsgContains(message, "monstro") then
-		npcHandler:say("Com qual monstro voce deseja lutar?", npc,creature)
-		npcHandler:setTopic(playerId,5)
+		npcHandler:say("Com qual monstro voce deseja lutar?", npc, creature)
+		npcHandler:setTopic(playerId, 5)
 	elseif npcHandler:getTopic(playerId) == 5 then
 		creatures = message
 		Game.createMonster(creatures, npc:getPosition())
-		npcHandler:setTopic(playerId,0)
+		npcHandler:setTopic(playerId, 0)
 	elseif npcHandler:getTopic(playerId) == 0 and MsgContains(message, "reset") then
-		todas = {"club", "sword", "axe", "dist", "shield", "fish", ""}
-		for i=1, 7 do
+		todas = { "club", "sword", "axe", "dist", "shield", "fish", "" }
+		for i = 1, 7 do
 			local skillId = getSkillId(todas[i])
-			player:setSkillLevel(skillId, 10, 0) 
+			player:setSkillLevel(skillId, 10, 0)
 		end
-		
+
 		player:setMagicLevel(0, 0)
 
 		newLevel = 1
@@ -154,17 +153,16 @@ local function creatureSayCallback(npc, creature, type, message)
 			toRemoveExp = currLevelExp - newLevelExp
 			player:removeExperience(toRemoveExp, true)
 		end
-
 	elseif npcHandler:getTopic(playerId) == 0 and MsgContains(message, "skill") then
-		npcHandler:say("Qual skill voce deseja modificar? {sword}, {axe}, {club}, {dist}, {ml}", npc,creature)
-		npcHandler:setTopic(playerId,6)
+		npcHandler:say("Qual skill voce deseja modificar? {sword}, {axe}, {club}, {dist}, {ml}", npc, creature)
+		npcHandler:setTopic(playerId, 6)
 	elseif npcHandler:getTopic(playerId) == 6 then
-		npcHandler:say("Quanto de skill voce deseja ter?",npc,creature)
-		npcHandler:setTopic(playerId,7)
+		npcHandler:say("Quanto de skill voce deseja ter?", npc, creature)
+		npcHandler:setTopic(playerId, 7)
 		skill = message
 	elseif npcHandler:getTopic(playerId) == 7 then
 		if skill == "ml" then
-			npcHandler:say("entrou ml",npc,creature)
+			npcHandler:say("entrou ml", npc, creature)
 			player:setMagicLevel(tonumber(message), 0)
 			npcHandler:setTopic(playerId, 0)
 		else
