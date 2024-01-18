@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<raid>
-	<announce delay="1000" type="event" message="Morshabaal enviou sua copia para um reconhecimento." />
-	<!--Single Spawns-->
-	<singlespawn delay="1000" name="Morshabaal illusion" x="33079" y="31664" z="15" />
-</raid>
