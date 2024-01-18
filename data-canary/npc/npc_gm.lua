@@ -67,6 +67,11 @@ local function getSkillId(skillName)
 	end
 end
 
+local function getExpForLevel(level)
+	level = level - 1
+	return ((50 * level * level * level) - (150 * level * level) + (400 * level)) / 3
+end
+
 local function creatureSayCallback(npc, creature, type, message)
 	local player = Player(creature)
 	local playerId = player:getId()
@@ -97,7 +102,7 @@ local function creatureSayCallback(npc, creature, type, message)
 		newLevel = tonumber(message)
 		currLevel = player:getLevel()
 		currLevelExp = player:getExperience()
-		newLevelExp = player.getExpForLevel(newLevel)
+		newLevelExp = getExpForLevel(newLevel)
 		if newLevel > currLevel then
 			toAddExp = newLevelExp - currLevelExp
 			player:addExperience(toAddExp, true)
