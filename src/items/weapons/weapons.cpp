@@ -450,12 +450,12 @@ bool WeaponMelee::getSkillType(std::shared_ptr<Player> player, std::shared_ptr<I
 		}
 
 		case WEAPON_CLUB: {
-			skill = SKILL_CLUB;
+			skill = SKILL_SWORD;
 			return true;
 		}
 
 		case WEAPON_AXE: {
-			skill = SKILL_AXE;
+			skill = SKILL_SWORD;
 			return true;
 		}
 
