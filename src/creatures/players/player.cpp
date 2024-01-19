@@ -313,12 +313,12 @@ int32_t Player::getWeaponSkill(std::shared_ptr<Item> item) const {
 		}
 
 		case WEAPON_CLUB: {
-			attackSkill = getSkillLevel(SKILL_SWORD);
+			attackSkill = getSkillLevel(SKILL_CLUB);
 			break;
 		}
 
 		case WEAPON_AXE: {
-			attackSkill = getSkillLevel(SKILL_SWORD);
+			attackSkill = getSkillLevel(SKILL_AXE);
 			break;
 		}
 
