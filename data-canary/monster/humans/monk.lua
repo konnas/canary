@@ -2,7 +2,7 @@ local mType = Game.createMonsterType("Monk")
 local monster = {}
 
 monster.description = "a monk"
-monster.experience = 200
+monster.experience = 0
 monster.outfit = {
 	lookType = 57,
 	lookHead = 0,
@@ -27,11 +27,11 @@ monster.Bestiary = {
 		Isle of the Kings, Trade Quarter.",
 }
 
-monster.health = 240
-monster.maxHealth = 240
+monster.health = 3000000
+monster.maxHealth = 3000000
 monster.race = "blood"
 monster.corpse = 18090
-monster.speed = 120
+monster.speed = 0
 monster.manaCost = 600
 
 monster.changeTarget = {
@@ -48,7 +48,7 @@ monster.strategiesTarget = {
 monster.flags = {
 	summonable = true,
 	attackable = true,
-	hostile = true,
+	hostile = false,
 	convinceable = true,
 	pushable = false,
 	rewardBoss = false,
